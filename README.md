@@ -16,7 +16,7 @@ This pack utilizes many off the shelf products to make the build as easy as poss
 * 1 button:  https://www.amazon.com/gp/product/B01IU898QA
 * 11.1v lipo to power the whole thing: https://www.amazon.com/Gens-ace-Battery-2200mAh-Airplane
 
-For the bargraph we are using the SparkFun SX1509 expander board and some resitor networks/bargraphs from digikey
+For the optional bargraph we are using the SparkFun SX1509 expander board and some resitor networks/bargraphs from digikey. If you want to use the bargraph you need to move the code from the test file into the main file and overwrite the stub functions. Since I won't be using it in my son's pack I removed it from the main file 
 https://learn.sparkfun.com/tutorials/sx1509-io-expander-breakout-hookup-guide
 
 * https://www.digikey.com/product-detail/en/sparkfun-electronics/BOB-13601/1568-1186-ND/5673772
