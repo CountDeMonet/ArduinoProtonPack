@@ -27,4 +27,4 @@ https://learn.sparkfun.com/tutorials/sx1509-io-expander-breakout-hookup-guide
 
 Here's a video of the whole shebang put together
 
-https://www.youtube.com/watch?v=5uZfKI9YPHc
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/5uZfKI9YPHc/0.jpg)](http://www.youtube.com/watch?v=5uZfKI9YPHc "Ghostbusters Arduino Proton Pack Update")
