@@ -3,7 +3,13 @@ Arduino Code for a Proton Pack
 
 I'm in the process of building a proton pack for my son and this is the progress I have made so far. I have included the models for 3d printing, all sounds but the ghostbusters theme song, and the arduino code to control all of this. The models for 3d printing are scaled to 83%. The proton pack models are also mirrored for a left handed users pack. Once I have some time I'll post non-mirrored files. 
 
-This pack utilizes many off the shelf products to make the build as easy as possible
+The models are based off the following things on thingiverse: 
+Main base model for the pack: https://www.thingiverse.com/thing:2479141
+Base model for the proton wand: https://www.thingiverse.com/thing:1128019
+Full scale proton wand the 83% one is based on: https://www.thingiverse.com/thing:2334883
+And a clippard valve with text: https://www.thingiverse.com/thing:2286284
+
+This pack utilizes many off the shelf products for the electronics to make the build as easy as possible. Total cost is around $80 for the parts if sourced from amazon. You can find cheaper on ebay
 
 * 1 arduino nano. You get 3 for $11.86: https://www.amazon.com/gp/product/B0713XK923
 * 2 power converters to adjust the 11.1v lipo to 5v. You get 6 for $9.69: https://www.amazon.com/gp/product/B01MQGMOKI
