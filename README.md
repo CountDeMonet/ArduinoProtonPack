@@ -1,5 +1,5 @@
-# ArduinoProtonPack
-Arduino Code for a Proton Pack
+# Arduino Based Ghostbusters Proton Pack
+Arduino Code for a Ghostbusters Neutrino Wand and Proton Pack
 
 I'm in the process of building a proton pack for my son and this is the progress I have made so far. I have included the models for 3d printing, all sounds but the ghostbusters theme song, and the arduino code to control all of this. The models for 3d printing are scaled to 83%. The proton pack models are also mirrored for a left handed users pack. Once I have some time I'll post non-mirrored files. 
 
