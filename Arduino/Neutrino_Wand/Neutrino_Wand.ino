@@ -11,18 +11,19 @@
 #define LOW  0x0
 
 // neopixel pins
-#define NEO_NOSE 9 // for nose of wand
+#define NEO_NOSE 3 // for nose of wand
 Adafruit_NeoPixel noseJewel = Adafruit_NeoPixel(7, NEO_NOSE, NEO_GRB + NEO_KHZ800);
 
-#define NEO_POWER 10 // for cyclotron and powercell
-Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(16, NEO_POWER, NEO_GRB + NEO_KHZ800);
+#define NEO_POWER 2 // for cyclotron and powercell
+Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(44, NEO_POWER, NEO_GRB + NEO_KHZ800);
 
 bool powerBooted = false; // has the pack booted up
+bool poweredDown = true;
 
 // soundboard pins
-#define SFX_RST 2
-#define SFX_RX 3
-#define SFX_TX 4
+#define SFX_RST 10
+#define SFX_RX 11
+#define SFX_TX 12
 
 // setup the board with the pins
 SoftwareSerial ss = SoftwareSerial(SFX_TX, SFX_RX);
@@ -85,11 +86,12 @@ void setup() {
 
   // configure nose jewel
   noseJewel.begin();
+  powerStick.setBrightness(80);
   noseJewel.show(); // Initialize all pixels to 'off'
 
   // configure powercell/cyclotron
   powerStick.begin();
-  powerStick.setBrightness(10);
+  powerStick.setBrightness(20);
   powerStick.show(); // Initialize all pixels to 'off'
 
   // set the modes for the switches/buttons
@@ -133,9 +135,10 @@ void resetSoundboard() {
 }
 
 /* ************* Main Loop ************* */
-int pwr_interval = 60;     // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
+int pwr_interval = 60;       // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
+int cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
 int firing_interval = 40;    // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
-
+bool shuttingDown = false;
 void loop() {
   // get the current time
   int currentMillis = millis();
@@ -170,7 +173,9 @@ void loop() {
 
     // choose the right powercell animation sequence for booted/on
     if ( powerBooted == true ) {
-      powerSequenceOne(currentMillis, pwr_interval);
+      poweredDown = false;
+      shuttingDown = false;
+      powerSequenceOne(currentMillis, pwr_interval, cyc_interval);
     } else {
       powerSequenceBoot(currentMillis);
     }
@@ -232,6 +237,7 @@ void loop() {
           if ( diff > warnWaitTime) {
             pwr_interval = 20; // speed up the powercell animation
             firing_interval = 20; // speed up the bar graph animation
+            cyc_interval = 100; // really speed up cyclotron
             if (playing == 1 || shouldWarn == false ) {
               shouldWarn = true;
               playTrack(warnTrack); // play the firing track with the warning
@@ -239,6 +245,7 @@ void loop() {
           } else if ( diff > dialogWaitTime) { // if we are in the dialog playing interval
             pwr_interval = 40; // speed up the powercell animation
             firing_interval = 30; // speed up the bar graph animation
+            cyc_interval = 500; // speed up cyclotron
             if (playing == 1) {
               playTrack(blastTrack); // play the normal blast track
             }
@@ -249,6 +256,7 @@ void loop() {
           clearFireStrobe();
           pwr_interval = 60;
           firing_interval = 40;
+          cyc_interval = 1000;
           fire = false;
 
           // see if we've been firing long enough to get the dialog or vent sounds
@@ -305,15 +313,20 @@ void loop() {
       }
     }
   } else { // if we are powering down
-    clearPowerStrip(); // clear all led's
-    shutdown_leds();
-
-    if (startup == true) { // if started reset the variables
-      startup = false;
-      safety = false;
-      fire = false;
-
-      playTrack(shutdownTrack); // play the pack shutdown track
+    if( poweredDown == false ){
+      if( shuttingDown == false ){
+        playTrack(shutdownTrack); // play the pack shutdown track
+        shuttingDown = true;
+      }
+      powerSequenceShutdown(currentMillis);
+    }else{
+      if (startup == true) { // if started reset the variables
+        clearPowerStrip(); // clear all led's
+        shutdown_leds();
+        startup = false;
+        safety = false;
+        fire = false;
+      }
     }
   }
   delay(1);
@@ -361,68 +374,238 @@ void shuffleArray(int * array, int size)
 }
 
 /*************** Powercell Animations *********************/
-unsigned long prevPwrBootMillis = 0;    // the last time we changed a light in the boot sequence
-const int pwr_boot_interval = 400;      // interval at which to cycle lights (milliseconds).
-unsigned long prevPwrMillis = 0;        // last time we changed a light in the idle sequence
+int c1Start = 16;
+int c1End = 22;
+int c2Start = 23;
+int c2End = 29;
+int c3Start = 30;
+int c3End = 36;
+int c4Start = 37;
+int c4End = 44;
 
-int powerSeqTotal = 16;     // total number of led's for power
-int powerBootSeqNum = 16;   // boot sequence counts down from 16
-int powerSeqNum = 0;
+unsigned long prevPwrBootMillis = 0;    // the last time we changed a powercell light in the boot sequence
+const int pwr_boot_interval = 41;       // interval at which to cycle lights (milliseconds).
+unsigned long prevCycBootMillis = 0;    // the last time we changed a cyclotron light in the boot sequence
+const int cyc_boot_interval = 400;      // interval at which to cycle lights (milliseconds).
+
+unsigned long prevShtdMillis = 0;       // last time we changed a light in the idle sequence
+const int pwr_shutdown_interval = 200;  // interval at which to cycle lights (milliseconds).
+
+unsigned long prevPwrMillis = 0;        // last time we changed a powercell light in the idle sequence
+unsigned long prevCycMillis = 0;        // last time we changed a cyclotron light in the idle sequence
+
+int powerSeqTotal = 15;       // total number of led's for powercell 0 based
+int currentBootLevel = -1;    // current powercell boot sequence led
+int currentLightLevel = 15;   // current powercell shutdown sequence led
+int powerSeqNum = 0;          // current running powercell sequence led
+int powerShutdownSeqNum = 15; // shutdown sequence counts down from 16
 
 // clears out and resets the power cell neopixel
 void clearPowerStrip() {
+  // reset vars
   powerBooted = false;
-  for ( int i = 0; i < powerSeqTotal; i++) {
+  poweredDown = true;
+  powerSeqNum = 0;
+  powerShutdownSeqNum = 15;
+  currentLightLevel = 15;
+  currentBootLevel = -1;
+  
+  // shutoff the leds
+  for ( int i = 0; i <= c4End; i++) {
     powerStick.setPixelColor(i, 0);
   }
   powerStick.show();
-  powerSeqNum = 0;
-  powerBootSeqNum = 16;
 }
 
-// boot animation on the bar graph
+bool reverseBootCyclotron = false;
+// boot animation on the powercell
 void powerSequenceBoot(int currentMillis) {
+  bool doUpdate = false;
+  
+  if (currentMillis - prevCycBootMillis > cyc_boot_interval) {
+    prevCycBootMillis = currentMillis;
+    
+    // START CYCLOTRON
+    if( reverseBootCyclotron == false ){
+      setCyclotronLightState(c1Start, c1End, 1);
+      setCyclotronLightState(c2Start, c2End, 2);
+      setCyclotronLightState(c3Start, c3End, 1);
+      setCyclotronLightState(c4Start, c4End, 2);
+      
+      doUpdate = true;
+      reverseBootCyclotron = true;
+    }else{
+      setCyclotronLightState(c1Start, c1End, 2);
+      setCyclotronLightState(c2Start, c2End, 1);
+      setCyclotronLightState(c3Start, c3End, 2);
+      setCyclotronLightState(c4Start, c4End, 1);
+      
+      doUpdate = true;
+      reverseBootCyclotron = false;
+    }
+    // END CYCLOTRON
+  }
+  
   if (currentMillis - prevPwrBootMillis > pwr_boot_interval) {
     // save the last time you blinked the LED
     prevPwrBootMillis = currentMillis;
 
-    for ( int i = powerSeqTotal; i > 0; i--) {
-      if ( i <= powerBootSeqNum ) {
+    // START POWERCELL
+    if( currentBootLevel != powerSeqTotal ){
+      if( currentBootLevel == currentLightLevel){
+        powerStick.setPixelColor(currentBootLevel, powerStick.Color(0, 0, 150));
+        currentLightLevel = powerSeqTotal;
+        currentBootLevel++;
+      }else{
+        if(currentLightLevel+1 <= powerSeqTotal){
+          powerStick.setPixelColor(currentLightLevel+1, 0);
+        }
+        powerStick.setPixelColor(currentLightLevel, powerStick.Color(0, 0, 150));
+        currentLightLevel--;
+      }
+      doUpdate = true;
+    }else{
+      powerBooted = true;
+      currentBootLevel = -1;
+      currentLightLevel = 15;
+    }
+    // END POWERCELL
+  }
+
+  // if we have changed an led
+  if( doUpdate == true ){
+    powerStick.show(); // commit all of the changes
+  }
+}
+
+void setCyclotronLightState(int startLed, int endLed, int state ){
+  switch ( state ) {
+    case 0:
+      for(int i=startLed; i <= endLed; i++) { // red
+        powerStick.setPixelColor(i, powerStick.Color(150, 0, 0));
+      }
+      break;
+    case 1:
+      for(int i=startLed; i <= endLed; i++) { // orange
+        powerStick.setPixelColor(i, powerStick.Color(255, 106, 0));
+      }
+      break;
+    case 2:
+      for(int i=startLed; i <= endLed; i++) { // off
+        powerStick.setPixelColor(i, 0);
+      }
+      break;
+  }
+}
+
+int cyclotronFadeOut = 255;
+// shutdown animation on the powercell
+void powerSequenceShutdown(int currentMillis) {
+  if (currentMillis - prevShtdMillis > pwr_shutdown_interval) {
+    prevShtdMillis = currentMillis;
+
+    // START CYCLOTRON
+    for(int i=c1Start; i <= c4End; i++) {
+      if( cyclotronFadeOut >= 0 ){
+        powerStick.setPixelColor(i, 255 * cyclotronFadeOut/255, 0, 0);
+        cyclotronFadeOut--;
+      }else{
+        powerStick.setPixelColor(i, 0);
+      }
+    }
+    // END CYCLOTRON
+    
+    // START POWERCELL
+    for ( int i = powerSeqTotal; i >= 0; i--) {
+      if ( i <= powerShutdownSeqNum ) {
         powerStick.setPixelColor(i, powerStick.Color(0, 0, 150));
       } else {
         powerStick.setPixelColor(i, 0);
       }
     }
+    
     powerStick.show();
-    if ( powerBootSeqNum > 0) {
-      powerBootSeqNum--;
+    
+    if ( powerShutdownSeqNum >= 0) {
+      powerShutdownSeqNum--;
     } else {
-      powerBooted = true;
-      powerBootSeqNum = 16;
+      poweredDown = true;
+      powerShutdownSeqNum = 15;
+      cyclotronFadeOut = 255;
     }
+    // END POWERCELL
   }
 }
 
+int cycOrder = 0;
 // normal animation on the bar graph
-void powerSequenceOne(int currentMillis, int anispeed) {
-  powerBootSeqNum = 16;
+void powerSequenceOne(int currentMillis, int anispeed, int cycspeed) {
+  bool doUpdate = false;
+  
+  if (currentMillis - prevCycMillis > cycspeed) {
+    prevCycMillis = currentMillis;
+    
+    // START CYCLOTRON
+    switch ( cycOrder ) {
+      case 0:
+        setCyclotronLightState(c1Start, c1End, 0);
+        setCyclotronLightState(c2Start, c2End, 2);
+        setCyclotronLightState(c3Start, c3End, 2);
+        setCyclotronLightState(c4Start, c4End, 2);
+        cycOrder = 1;
+        break;
+      case 1:
+        setCyclotronLightState(c1Start, c1End, 2);
+        setCyclotronLightState(c2Start, c2End, 0);
+        setCyclotronLightState(c3Start, c3End, 2);
+        setCyclotronLightState(c4Start, c4End, 2);
+        cycOrder = 2;
+        break;
+      case 2:
+        setCyclotronLightState(c1Start, c1End, 2);
+        setCyclotronLightState(c2Start, c2End, 2);
+        setCyclotronLightState(c3Start, c3End, 0);
+        setCyclotronLightState(c4Start, c4End, 2);
+        cycOrder = 3;
+        break;
+      case 3:
+        setCyclotronLightState(c1Start, c1End, 2);
+        setCyclotronLightState(c2Start, c2End, 2);
+        setCyclotronLightState(c3Start, c3End, 2);
+        setCyclotronLightState(c4Start, c4End, 0);
+        cycOrder = 0;
+        break;
+    }
+
+    doUpdate = true;
+    // END CYCLOTRON
+  }
+  
   if (currentMillis - prevPwrMillis > anispeed) {
     // save the last time you blinked the LED
     prevPwrMillis = currentMillis;
 
-    for ( int i = 0; i < powerSeqTotal; i++) {
+    // START POWERCELL
+    for ( int i = 0; i <= powerSeqTotal; i++) {
       if ( i <= powerSeqNum ) {
         powerStick.setPixelColor(i, powerStick.Color(0, 0, 150));
       } else {
         powerStick.setPixelColor(i, 0);
       }
     }
-    powerStick.show();
-    if ( powerSeqNum < powerSeqTotal) {
+    
+    if ( powerSeqNum <= powerSeqTotal) {
       powerSeqNum++;
     } else {
       powerSeqNum = 0;
     }
+
+    doUpdate = true;
+    // END POWERCELL
+  }
+
+  if( doUpdate == true ){
+    powerStick.show();
   }
 }
 
