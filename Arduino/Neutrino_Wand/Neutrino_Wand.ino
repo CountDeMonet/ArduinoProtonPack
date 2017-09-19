@@ -231,17 +231,17 @@ void loop() {
           long diff = millis() - startDialogMillis;
           // if we are in the warn interval
           if ( diff > warnWaitTime) {
-            pwr_interval = 20; // speed up the powercell animation
+            pwr_interval = 20;    // speed up the powercell animation
             firing_interval = 20; // speed up the bar graph animation
-            cyc_interval = 100; // really speed up cyclotron
+            cyc_interval = 50;    // really speed up cyclotron
             if (playing == 1 || shouldWarn == false ) {
               shouldWarn = true;
               playTrack(warnTrack); // play the firing track with the warning
             }
           } else if ( diff > dialogWaitTime) { // if we are in the dialog playing interval
-            pwr_interval = 40; // speed up the powercell animation
+            pwr_interval = 40;    // speed up the powercell animation
             firing_interval = 30; // speed up the bar graph animation
-            cyc_interval = 500; // speed up cyclotron
+            cyc_interval = 300;   // speed up cyclotron
             if (playing == 1) {
               playTrack(blastTrack); // play the normal blast track
             }
