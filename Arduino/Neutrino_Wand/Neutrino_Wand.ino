@@ -130,10 +130,6 @@ void stopTrack() {
   sfx.stop();
 }
 
-void resetSoundboard() {
-  sfx.reset();
-}
-
 /* ************* Main Loop ************* */
 int pwr_interval = 60;       // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
 int cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
@@ -222,7 +218,7 @@ void loop() {
 
       // if the fire button is pressed
       if (fire_button == 0) {
-        fireStrobe(); // strobe the nose pixels
+        fireStrobe(currentMillis); // strobe the nose pixels
 
         // if this is the first time reset some variables and play the blast track
         if (fire == false) {
@@ -611,7 +607,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed) {
 
 /*************** Firing Animations *********************/
 unsigned long prevFireMillis = 0;
-const int fire_interval = 2;     // interval at which to cycle lights (milliseconds).
+const int fire_interval = 50;     // interval at which to cycle lights (milliseconds).
 int fireSeqNum = 0;
 int fireSeqTotal = 5;
 
@@ -623,69 +619,73 @@ void clearFireStrobe() {
   fireSeqNum = 0;
 }
 
-void fireStrobe() {
-  switch ( fireSeqNum ) {
-    case 0:
-      noseJewel.setPixelColor(0, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(1, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(2, 0);
-      noseJewel.setPixelColor(3, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(4, 0);
-      noseJewel.setPixelColor(5, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(6, 0);
-      break;
-    case 1:
-      noseJewel.setPixelColor(0, noseJewel.Color(0, 0, 255));
-      noseJewel.setPixelColor(1, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(2, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(3, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(4, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(5, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(6, noseJewel.Color(255, 255, 255));
-      break;
-    case 2:
-      noseJewel.setPixelColor(0, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(1, 0);
-      noseJewel.setPixelColor(2, noseJewel.Color(0, 0, 255));
-      noseJewel.setPixelColor(3, 0);
-      noseJewel.setPixelColor(4, noseJewel.Color(0, 0, 255));
-      noseJewel.setPixelColor(5, 0);
-      noseJewel.setPixelColor(6, noseJewel.Color(255, 0, 0));
-      break;
-    case 3:
-      noseJewel.setPixelColor(0, noseJewel.Color(0, 0, 255));
-      noseJewel.setPixelColor(1, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(2, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(3, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(4, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(5, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(6, noseJewel.Color(255, 255, 255));
-      break;
-    case 4:
-      noseJewel.setPixelColor(0, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(1, 0);
-      noseJewel.setPixelColor(2, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(3, 0);
-      noseJewel.setPixelColor(4, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(5, 0);
-      noseJewel.setPixelColor(6, noseJewel.Color(255, 255, 255));
-      break;
-    case 5:
-      noseJewel.setPixelColor(0, noseJewel.Color(255, 0, 255));
-      noseJewel.setPixelColor(1, noseJewel.Color(0, 255, 0));
-      noseJewel.setPixelColor(2, noseJewel.Color(255, 0, 0));
-      noseJewel.setPixelColor(3, noseJewel.Color(0, 0, 255));
-      noseJewel.setPixelColor(4, noseJewel.Color(255, 0, 255));
-      noseJewel.setPixelColor(5, noseJewel.Color(255, 255, 255));
-      noseJewel.setPixelColor(6, noseJewel.Color(0, 0, 255));
-      break;
-  }
-
-  noseJewel.show();
-
-  fireSeqNum++;
-  if ( fireSeqNum > fireSeqTotal ) {
-    fireSeqNum = 0;
+void fireStrobe(int currentMillis) {
+  if (currentMillis - prevFireMillis > fire_interval) {
+    prevFireMillis = currentMillis;
+    
+    switch ( fireSeqNum ) {
+      case 0:
+        noseJewel.setPixelColor(0, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(1, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(2, 0);
+        noseJewel.setPixelColor(3, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(4, 0);
+        noseJewel.setPixelColor(5, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(6, 0);
+        break;
+      case 1:
+        noseJewel.setPixelColor(0, noseJewel.Color(0, 0, 255));
+        noseJewel.setPixelColor(1, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(2, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(3, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(4, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(5, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(6, noseJewel.Color(255, 255, 255));
+        break;
+      case 2:
+        noseJewel.setPixelColor(0, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(1, 0);
+        noseJewel.setPixelColor(2, noseJewel.Color(0, 0, 255));
+        noseJewel.setPixelColor(3, 0);
+        noseJewel.setPixelColor(4, noseJewel.Color(0, 0, 255));
+        noseJewel.setPixelColor(5, 0);
+        noseJewel.setPixelColor(6, noseJewel.Color(255, 0, 0));
+        break;
+      case 3:
+        noseJewel.setPixelColor(0, noseJewel.Color(0, 0, 255));
+        noseJewel.setPixelColor(1, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(2, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(3, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(4, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(5, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(6, noseJewel.Color(255, 255, 255));
+        break;
+      case 4:
+        noseJewel.setPixelColor(0, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(1, 0);
+        noseJewel.setPixelColor(2, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(3, 0);
+        noseJewel.setPixelColor(4, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(5, 0);
+        noseJewel.setPixelColor(6, noseJewel.Color(255, 255, 255));
+        break;
+      case 5:
+        noseJewel.setPixelColor(0, noseJewel.Color(255, 0, 255));
+        noseJewel.setPixelColor(1, noseJewel.Color(0, 255, 0));
+        noseJewel.setPixelColor(2, noseJewel.Color(255, 0, 0));
+        noseJewel.setPixelColor(3, noseJewel.Color(0, 0, 255));
+        noseJewel.setPixelColor(4, noseJewel.Color(255, 0, 255));
+        noseJewel.setPixelColor(5, noseJewel.Color(255, 255, 255));
+        noseJewel.setPixelColor(6, noseJewel.Color(0, 0, 255));
+        break;
+    }
+  
+    noseJewel.show();
+  
+    fireSeqNum++;
+    if ( fireSeqNum > fireSeqTotal ) {
+      fireSeqNum = 0;
+    }
   }
 }
 
