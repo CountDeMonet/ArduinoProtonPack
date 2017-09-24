@@ -3,7 +3,8 @@ All of this assumes you are using a 15 led bar graph. I'm combining a 5 led and 
 From the bargraph_code.ino you need to do the following:
 
 What this chunk does is include the sx1509 libraries and sets up the configuration. This assumes the library is configured stock and the address has not been changed. It also defines the LED locations for the bar graph. Take this code and insert it into the header of the Neutrino_Wand.ino file
-[code]
+
+```c++
 #include <Wire.h> // Include the I2C library (required)
 #include <SparkFunSX1509.h> // Include SX1509 library
 
@@ -31,11 +32,11 @@ const byte SX1509_BAR_12 = 11;
 const byte SX1509_BAR_13 = 12;
 const byte SX1509_BAR_14 = 13;
 const byte SX1509_BAR_15 = 14;
-[/code]
+```
 
 The next chunk is added to the setup() function. This initialized the sx1509 board and makes sure the arduino is communicating. It configures the pin modes for the LED's as inputs and shutdown all of the LED's so they are not lit
 
-[code]
+```c++
   // Call io.begin(<address>) to initialize the SX1509. If it
   // successfully communicates, it'll return 1.
   if (!io.begin(SX1509_ADDRESS)) {
@@ -61,17 +62,17 @@ The next chunk is added to the setup() function. This initialized the sx1509 boa
 
   // set everything off initially
   shutdown_leds();
-[/code]
+```
 
 Right above the Loop() function in neutrino_wand.ino there are a number of intervals defined. The interval for the bargraph is already defined in neutrino_wand.ino. What this does is defines how often the bar graph is updated. If you wanted to speed up the bargraph this is the variable you would adjust. We define it here because in the main loop() we update this parameter so the bargraph can go faster when firing 
 
-[code]
+```c++
 long firing_interval = 40;    // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
-[/code]
+```
 
 The last part is to replace the stub functions in neutrino_wand.ino. At the very bottom of the neutrino_wand.ino file you will see these stubs
 
-[code]
+```c++
 /*************** Bar Graph Animations *********************/
 void shutdown_leds() {
   // stubb function for when I re-enable to bargraph
@@ -82,11 +83,11 @@ void barGraphSequenceOne(int currentMillis) {
 void barGraphSequenceTwo(int currentMillis) {
   // stubb function for when I re-enable to bargraph
 }
-[/code]
+```
 
 I kept the code that calls the bargraph in the file so all you have to do is update these stubs with the actual code.  Simply copy this code and replace the stubbs with this.
 
-[code]
+```c++
 /*************** Bar Graph Animations *********************/
 // This is the idle sequence
 unsigned long prevBarMillis_on = 0;   // bargraph on tracker
@@ -274,6 +275,6 @@ void switch_graph_led(int num, int state) {
       break;
   }
 }
-[/code]
+```
 
 And with that everything should work. You'll have the idle animation on the bar graph and the firing animation with the speed increasing as you hold the button down as I showed in some of the videos.
