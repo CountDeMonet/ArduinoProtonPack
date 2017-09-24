@@ -30,6 +30,11 @@ SoftwareSerial ss = SoftwareSerial(SFX_TX, SFX_RX);
 Adafruit_Soundboard sfx = Adafruit_Soundboard( & ss, NULL, SFX_RST);
 const int ACT = 13;// this connects to the act on the board so we can know if the audio is playing
 
+// ##############################
+// available options
+// ##############################
+const bool useGameCyclotronEffect = true; // set this to true to get the fading previous cyclotron light in the idle sequence
+
 // inputs for switches and buttons
 const int THEME_SWITCH = 5;
 const int STARTUP_SWITCH = 6;
@@ -133,7 +138,9 @@ void stopTrack() {
 /* ************* Main Loop ************* */
 int pwr_interval = 60;       // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
 int cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
+int cyc_fade_interval = 15;   // fade the inactive cyclotron to light to nothing
 int firing_interval = 40;    // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
+
 bool shuttingDown = false;
 void loop() {
   // get the current time
@@ -171,7 +178,7 @@ void loop() {
     if ( powerBooted == true ) {
       poweredDown = false;
       shuttingDown = false;
-      powerSequenceOne(currentMillis, pwr_interval, cyc_interval);
+      powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
     } else {
       powerSequenceBoot(currentMillis);
     }
@@ -234,6 +241,7 @@ void loop() {
             pwr_interval = 20;    // speed up the powercell animation
             firing_interval = 20; // speed up the bar graph animation
             cyc_interval = 50;    // really speed up cyclotron
+            cyc_fade_interval = 5;
             if (playing == 1 || shouldWarn == false ) {
               shouldWarn = true;
               playTrack(warnTrack); // play the firing track with the warning
@@ -242,6 +250,7 @@ void loop() {
             pwr_interval = 40;    // speed up the powercell animation
             firing_interval = 30; // speed up the bar graph animation
             cyc_interval = 300;   // speed up cyclotron
+            cyc_fade_interval = 10;
             if (playing == 1) {
               playTrack(blastTrack); // play the normal blast track
             }
@@ -253,6 +262,7 @@ void loop() {
           pwr_interval = 60;
           firing_interval = 40;
           cyc_interval = 1000;
+          cyc_fade_interval = 15;
           fire = false;
 
           // see if we've been firing long enough to get the dialog or vent sounds
@@ -389,6 +399,7 @@ const int pwr_shutdown_interval = 200;  // interval at which to cycle lights (mi
 
 unsigned long prevPwrMillis = 0;        // last time we changed a powercell light in the idle sequence
 unsigned long prevCycMillis = 0;        // last time we changed a cyclotron light in the idle sequence
+unsigned long prevFadeCycMillis = 0;        // last time we changed a cyclotron light in the idle sequence
 
 int powerSeqTotal = 15;       // total number of led's for powercell 0 based
 int currentBootLevel = -1;    // current powercell boot sequence led
@@ -474,11 +485,12 @@ void powerSequenceBoot(int currentMillis) {
   }
 }
 
+int cyclotronRunningFadeOut = 255;
 void setCyclotronLightState(int startLed, int endLed, int state ){
   switch ( state ) {
     case 0:
       for(int i=startLed; i <= endLed; i++) { // red
-        powerStick.setPixelColor(i, powerStick.Color(150, 0, 0));
+        powerStick.setPixelColor(i, powerStick.Color(255, 0, 0));
       }
       break;
     case 1:
@@ -489,6 +501,16 @@ void setCyclotronLightState(int startLed, int endLed, int state ){
     case 2:
       for(int i=startLed; i <= endLed; i++) { // off
         powerStick.setPixelColor(i, 0);
+      }
+      break;
+    case 3:
+      for(int i=startLed; i <= endLed; i++) {
+        if( cyclotronRunningFadeOut >= 0 ){
+          powerStick.setPixelColor(i, 255 * cyclotronRunningFadeOut/255, 0, 0);
+          cyclotronRunningFadeOut--;
+        }else{
+          powerStick.setPixelColor(i, 0);
+        }
       }
       break;
   }
@@ -534,54 +556,131 @@ void powerSequenceShutdown(int currentMillis) {
 }
 
 int cycOrder = 0;
-// normal animation on the bar graph
-void powerSequenceOne(int currentMillis, int anispeed, int cycspeed) {
-  bool doUpdate = false;
-  
-  if (currentMillis - prevCycMillis > cycspeed) {
-    prevCycMillis = currentMillis;
-    
-    // START CYCLOTRON
-    switch ( cycOrder ) {
-      case 0:
-        setCyclotronLightState(c1Start, c1End, 0);
-        setCyclotronLightState(c2Start, c2End, 2);
-        setCyclotronLightState(c3Start, c3End, 2);
-        setCyclotronLightState(c4Start, c4End, 2);
-        cycOrder = 1;
-        break;
-      case 1:
-        setCyclotronLightState(c1Start, c1End, 2);
-        setCyclotronLightState(c2Start, c2End, 0);
-        setCyclotronLightState(c3Start, c3End, 2);
-        setCyclotronLightState(c4Start, c4End, 2);
-        cycOrder = 2;
-        break;
-      case 2:
-        setCyclotronLightState(c1Start, c1End, 2);
-        setCyclotronLightState(c2Start, c2End, 2);
-        setCyclotronLightState(c3Start, c3End, 0);
-        setCyclotronLightState(c4Start, c4End, 2);
-        cycOrder = 3;
-        break;
-      case 3:
-        setCyclotronLightState(c1Start, c1End, 2);
-        setCyclotronLightState(c2Start, c2End, 2);
-        setCyclotronLightState(c3Start, c3End, 2);
-        setCyclotronLightState(c4Start, c4End, 0);
-        cycOrder = 0;
-        break;
-    }
+int cycFading = -1;
 
-    doUpdate = true;
-    // END CYCLOTRON
-  }
+// normal animation on the bar graph
+void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfadespeed) {
+  bool doUpdate = false;
+
+  // START CYCLOTRON 
+  if( useGameCyclotronEffect == true ){
+    // figure out main light
+    if (currentMillis - prevCycMillis > cycspeed) {
+      prevCycMillis = currentMillis;
+      
+      switch ( cycOrder ) {
+        case 0:
+          setCyclotronLightState(c1Start, c1End, 0);
+          setCyclotronLightState(c2Start, c2End, 2);
+          setCyclotronLightState(c3Start, c3End, 2);
+          cycFading = 0;
+          cyclotronRunningFadeOut = 255;
+          cycOrder = 1;
+          break;
+        case 1:
+          setCyclotronLightState(c2Start, c2End, 0);
+          setCyclotronLightState(c3Start, c3End, 2);
+          setCyclotronLightState(c4Start, c4End, 2);
+          cycFading = 1;
+          cyclotronRunningFadeOut = 255;
+          cycOrder = 2;
+          break;
+        case 2:
+          setCyclotronLightState(c1Start, c1End, 2);
+          setCyclotronLightState(c3Start, c3End, 0);
+          setCyclotronLightState(c4Start, c4End, 2);
+          cycFading = 2;
+          cyclotronRunningFadeOut = 255;
+          cycOrder = 3;
+          break;
+        case 3:
+          setCyclotronLightState(c1Start, c1End, 2);
+          setCyclotronLightState(c2Start, c2End, 2);
+          setCyclotronLightState(c4Start, c4End, 0);
+          cycFading = 3;
+          cyclotronRunningFadeOut = 255;
+          cycOrder = 0;
+          break;
+      }
   
+      doUpdate = true;
+    }
+  
+    // now figure out the fading light
+    if( currentMillis - prevFadeCycMillis > cycfadespeed ){
+      prevFadeCycMillis = currentMillis;
+      if( cycFading != -1 ){
+        switch ( cycFading ) {
+          case 0:
+            setCyclotronLightState(c4Start, c4End, 3);
+            break;
+          case 1:
+            setCyclotronLightState(c1Start, c1End, 3);
+            break;
+          case 2:
+            setCyclotronLightState(c2Start, c2End, 3);
+            break;
+          case 3:
+            setCyclotronLightState(c3Start, c3End, 3);
+            break;
+        }
+        doUpdate = true;
+      }
+    }
+  }else{
+    // figure out main light
+    if (currentMillis - prevCycMillis > cycspeed) {
+      prevCycMillis = currentMillis;
+      
+      switch ( cycOrder ) {
+        case 0:
+          setCyclotronLightState(c4Start, c4End, 2);
+          setCyclotronLightState(c1Start, c1End, 0);
+          setCyclotronLightState(c2Start, c2End, 2);
+          setCyclotronLightState(c3Start, c3End, 2);
+          cycFading = 0;
+          cyclotronRunningFadeOut = 255;
+          cycOrder = 1;
+          break;
+        case 1:
+          setCyclotronLightState(c1Start, c1End, 2);
+          setCyclotronLightState(c2Start, c2End, 0);
+          setCyclotronLightState(c3Start, c3End, 2);
+          setCyclotronLightState(c4Start, c4End, 2);
+          cycFading = 1;
+          cyclotronRunningFadeOut = 255;
+          cycOrder = 2;
+          break;
+        case 2:
+          setCyclotronLightState(c1Start, c1End, 2);
+          setCyclotronLightState(c2Start, c2End, 2);
+          setCyclotronLightState(c3Start, c3End, 0);
+          setCyclotronLightState(c4Start, c4End, 2);
+          cycFading = 2;
+          cyclotronRunningFadeOut = 255;
+          cycOrder = 3;
+          break;
+        case 3:
+          setCyclotronLightState(c1Start, c1End, 2);
+          setCyclotronLightState(c2Start, c2End, 2);
+          setCyclotronLightState(c3Start, c3End, 2);
+          setCyclotronLightState(c4Start, c4End, 0);
+          cycFading = 3;
+          cyclotronRunningFadeOut = 255;
+          cycOrder = 0;
+          break;
+      }
+  
+      doUpdate = true;
+    }
+  }
+  // END CYCLOTRON
+
+  // START POWERCELL
   if (currentMillis - prevPwrMillis > anispeed) {
     // save the last time you blinked the LED
     prevPwrMillis = currentMillis;
 
-    // START POWERCELL
     for ( int i = 0; i <= powerSeqTotal; i++) {
       if ( i <= powerSeqNum ) {
         powerStick.setPixelColor(i, powerStick.Color(0, 0, 150));
@@ -597,9 +696,10 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed) {
     }
 
     doUpdate = true;
-    // END POWERCELL
   }
+  // END POWERCELL
 
+  // if we changed anything update
   if( doUpdate == true ){
     powerStick.show();
   }
