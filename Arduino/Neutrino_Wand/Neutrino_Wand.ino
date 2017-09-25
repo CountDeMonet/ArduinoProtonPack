@@ -204,9 +204,6 @@ void loop() {
 
   // get the current switch states
   int theme_switch = digitalRead(THEME_SWITCH);
-  int startup_switch = digitalRead(STARTUP_SWITCH);
-  int safety_switch = digitalRead(SAFETY_SWITCH);
-  int fire_button = digitalRead(FIRE_BUTTON);
 
   // if the theme switch has recently changed from off to on we 
   // should play the full ghostbusters theme song
@@ -218,7 +215,11 @@ void loop() {
   } else {
     theme = false;
   }
- 
+
+  int startup_switch = digitalRead(STARTUP_SWITCH);
+  int safety_switch = digitalRead(SAFETY_SWITCH);
+  int fire_button = digitalRead(FIRE_BUTTON);
+  
   // while the startup switch is set on
   if (startup_switch == 1) {   
     // in general we always try to play the idle sound if started
@@ -231,9 +232,8 @@ void loop() {
       poweredDown = false;
       shuttingDown = false;
       powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
-      flashWandLED(0, currentMillis, wandFlashInterval);    // set top light white blinking
-      setWandLightState(1, 2);    // set back light orange
-      setWandLightState(3, 0);    //set sloblow red
+      setWandLightState(1, 2, 0);               // set back light orange
+      setWandLightState(3, 0, 0);               //set sloblow red
     } else {
       powerSequenceBoot(currentMillis);
     }
@@ -250,7 +250,7 @@ void loop() {
     }
 
     if( startup == true && safety_switch == 1 ){
-      setWandLightState(2, 3);    //set body white
+      setWandLightState(2, 3, 0);    //set body blue
     }
     
     // if the safety switch is set off then we can fire when the button is pressed
@@ -301,16 +301,15 @@ void loop() {
             firing_interval = 20; // speed up the bar graph animation
             cyc_interval = 50;    // really speed up cyclotron
             cyc_fade_interval = 5;
-            wandFlashInterval = 250;
             if (playing == 1 || shouldWarn == false ) {
               shouldWarn = true;
               playTrack(warnTrack); // play the firing track with the warning
+              setWandLightState(0, 2, 0);    // set top light orange
             }
           } else if ( diff > dialogWaitTime) { // if we are in the dialog playing interval
             pwr_interval = 40;    // speed up the powercell animation
             firing_interval = 30; // speed up the bar graph animation
             cyc_interval = 300;   // speed up cyclotron
-            wandFlashInterval = 500;
             cyc_fade_interval = 10;
             if (playing == 1) {
               playTrack(blastTrack); // play the normal blast track
@@ -324,7 +323,6 @@ void loop() {
           firing_interval = 40;
           cyc_interval = 1000;
           cyc_fade_interval = 15;
-          wandFlashInterval = 1000;
           fire = false;
 
           // see if we've been firing long enough to get the dialog or vent sounds
@@ -376,7 +374,7 @@ void loop() {
     } else {
       // if the safety is switched off play the click track
       if (safety == true) {
-        setWandLightState(2, 4);    //set body off
+        setWandLightState(2, 4, 0);    //set body off
         safety = false;
         playTrack(clickTrack);
       }
@@ -399,6 +397,43 @@ void loop() {
     }
   }
   delay(1);
+}
+
+/*************** Wand Light Helpers *********************/
+unsigned long prevFlashMillis = 0; // last time we changed a powercell light in the idle sequence
+bool flashState = false;
+void setWandLightState(int lednum, int state, int currentMillis){
+  switch ( state ) {
+    case 0: // set led red
+      wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));
+      break;
+    case 1: // set led white
+      wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));
+      break;
+    case 2: // set led orange
+      wandLights.setPixelColor(lednum, wandLights.Color(255, 127, 0));
+      break;
+    case 3: // set led blue
+      wandLights.setPixelColor(lednum, wandLights.Color(0, 0, 255));
+      break;
+    case 4: // set led off
+      wandLights.setPixelColor(lednum, 0);
+      break;
+    case 5: 
+      if (currentMillis - prevFlashMillis > wandFlashInterval) {
+        prevFlashMillis = currentMillis;
+        if( flashState == false ){
+          wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));
+          flashState = true;
+        }else{
+          wandLights.setPixelColor(lednum, 0);
+          flashState = false;
+        }
+      }
+      break;
+  }
+
+  wandLights.show();
 }
 
 /*************** Powercell/Cyclotron Animations *********************/
@@ -424,44 +459,6 @@ int powerShutdownSeqNum = 15;       // shutdown sequence counts down from 16
 // animation level trackers for the boot and shutdown
 int currentBootLevel = -1;          // current powercell boot level sequence led
 int currentLightLevel = 15;         // current powercell boot light sequence led
-
-void setWandLightState(int lednum, int state){
-  switch ( state ) {
-    case 0: // set led red
-        wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));
-      break;
-    case 1: // set led white
-      wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));
-      break;
-    case 2: // set led orange
-      wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 0));
-      break;
-    case 3: // set led orange
-      wandLights.setPixelColor(lednum, wandLights.Color(0, 0, 255));
-      break;
-    case 4: // set led off
-      wandLights.setPixelColor(lednum, 0);
-      break;
-  }
-
-  wandLights.show();
-}
-
-unsigned long prevFlashMillis = 0;        // last time we changed a powercell light in the idle sequence
-bool flashState = false;
-void flashWandLED(int lednum, int currentMillis, int flashInterval){
-  if (currentMillis - prevFlashMillis > flashInterval) {
-    prevFlashMillis = currentMillis;
-    if( flashState == false ){
-      wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));
-      flashState = true;
-    }else{
-      wandLights.setPixelColor(lednum, 0);
-      flashState = false;
-    }
-  }
-  wandLights.show();
-}
 
 // helper function to set light states for the cyclotron
 int cyclotronRunningFadeOut = 255;  // we reset this variable every time we change the cyclotron index so the fade effect works
