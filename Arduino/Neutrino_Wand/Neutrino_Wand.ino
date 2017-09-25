@@ -10,12 +10,16 @@
 #define HIGH 0x1
 #define LOW  0x0
 
-// neopixel pins
+#define NEO_POWER 2 // for cyclotron and powercell
+Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(44, NEO_POWER, NEO_GRB + NEO_KHZ800);
+
+// neopixel pins / setup
 #define NEO_NOSE 3 // for nose of wand
 Adafruit_NeoPixel noseJewel = Adafruit_NeoPixel(7, NEO_NOSE, NEO_GRB + NEO_KHZ800);
 
-#define NEO_POWER 2 // for cyclotron and powercell
-Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(44, NEO_POWER, NEO_GRB + NEO_KHZ800);
+// neopixel pins / setup
+#define NEO_WAND 4 // for nose of wand
+Adafruit_NeoPixel wandLights = Adafruit_NeoPixel(4, NEO_WAND, NEO_GRB + NEO_KHZ800);
 
 // LED indexes into the neopixel powerstick chain for the cyclotron
 int c1Start = 16;
@@ -27,18 +31,20 @@ int c3End = 36;
 int c4Start = 37;
 int c4End = 44;
 
-bool powerBooted = false; // has the pack booted up
-bool poweredDown = true;
+// inputs for switches and buttons
+const int THEME_SWITCH = 5;
+const int STARTUP_SWITCH = 6;
+const int SAFETY_SWITCH = 7;
+const int FIRE_BUTTON = 8;
 
-// soundboard pins
+// soundboard pins and setup
 #define SFX_RST 10
 #define SFX_RX 11
 #define SFX_TX 12
+const int ACT = 13;// this allows us to know if the audio is playing
 
-// setup the board with the pins
 SoftwareSerial ss = SoftwareSerial(SFX_TX, SFX_RX);
 Adafruit_Soundboard sfx = Adafruit_Soundboard( & ss, NULL, SFX_RST);
-const int ACT = 13;// this connects to the act on the board so we can know if the audio is playing
 
 // ##############################
 // available options
@@ -46,24 +52,20 @@ const int ACT = 13;// this connects to the act on the board so we can know if th
 const bool useGameCyclotronEffect = true; // set this to true to get the fading previous cyclotron light in the idle sequence
 
 // Possible Pack states
+bool powerBooted = false; // has the pack booted up
 bool isFiring = false;      // keeps track of the firing state
 bool shouldWarn = false;    // track the warning state for alert audio
 bool shuttingDown = false;  // is the pack in the process of shutting down
+bool poweredDown = true;
 
-// inputs for switches and buttons
-const int THEME_SWITCH = 5;
-const int STARTUP_SWITCH = 6;
-const int SAFETY_SWITCH = 7;
-const int FIRE_BUTTON = 8;
-
-// switch states for tracking
-bool theme = false;
+// current switch states
 bool startup = false;
+bool theme = false;
 bool safety = false;
 bool fire = false;
 bool warning = false;
 
-// audio track locations on soundboard
+// audio track names on soundboard
 const String startupTrack =   "T00     WAV";
 const String blastTrack =     "T01     WAV";
 const String endTrack =       "T02     WAV";
@@ -85,7 +87,9 @@ const String neutronizedTrack="T17     WAV";
 const String boxTrack =       "T18     WAV";
 const String themeTrack =     "T19     OGG";
 
-QueueArray <int> dialogQueue; // this queue holds a shuffled list of dialog tracks we can pull from
+// this queue holds a shuffled list of dialog tracks we can pull from so we don't
+// play the same ones twice
+QueueArray <int> dialogQueue; 
 
 // dialog trigger times/states
 unsigned long startDialogMillis;
@@ -93,7 +97,10 @@ int dialogArray[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}; // array with an index for 
 const int dialogWaitTime = 5000; // how long to hold down fire for a dialog to play
 const int warnWaitTime = 10000;  // how long to hold down fire before warning sounds
 
+// Arduino setup function
 void setup() {
+  randomSeed(analogRead(A0)); // try to get a good random seed
+  
   // softwareserial at 9600 baud for the audio board
   ss.begin(9600);
 
@@ -115,6 +122,10 @@ void setup() {
   powerStick.begin();
   powerStick.setBrightness(20);
   powerStick.show(); // Initialize all pixels to 'off'
+
+  wandLights.begin();
+  wandLights.setBrightness(40);
+  wandLights.show();
 
   // set the modes for the switches/buttons
   pinMode(THEME_SWITCH, INPUT);
@@ -145,22 +156,17 @@ void playTrack(String trackname) {
   }
 }
 
-int getRandomTrack()
-{
-  if ( !dialogQueue.isEmpty() )
-  {
+int getRandomTrack(){
+  if ( !dialogQueue.isEmpty() ){
     // pull the next dialog
     return dialogQueue.dequeue();
-  }
-  else
-  {
+  }else{
     // queue is empty so reset it and pull the first
     // random dialog
     int numDialog = sizeof(dialogArray) / sizeof(int);
     shuffleTrackArray( dialogArray, numDialog );
     
-    for (int i = 0; i < numDialog; i++)
-    {
+    for (int i = 0; i < numDialog; i++){
       dialogQueue.enqueue(dialogArray[i]);
     }
 
@@ -168,25 +174,17 @@ int getRandomTrack()
   }
 }
 
-// function for sorting arrays found here. Added random seed
+// function for sorting arrays found here.
 // https://forum.arduino.cc/index.php?topic=345964.0
-void shuffleTrackArray(int * array, int size)
-{
-  randomSeed(analogRead(A0));
-
+void shuffleTrackArray(int * array, int size){
   int last = 0;
   int temp = array[last];
-  for (int i = 0; i < size; i++)
-  {
+  for (int i = 0; i < size; i++){
     int index = random(size);
     array[last] = array[index];
     last = index;
   }
   array[last] = temp;
-}
-
-void stopTrack() {
-  sfx.stop();
 }
 
 /* ************* Main Loop ************* */
@@ -195,6 +193,7 @@ int pwr_interval = 60;        // interval at which to cycle lights for the power
 int cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
 int cyc_fade_interval = 15;   // fade the inactive cyclotron to light to nothing
 int firing_interval = 40;     // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
+int wandFlashInterval = 1000; // interval at which we flash the top led on the wand
 
 void loop() {
   // get the current time
@@ -203,10 +202,14 @@ void loop() {
   // find out of the audio board is playing audio
   int playing = digitalRead(ACT);
 
-  // find out the theme switch state
+  // get the current switch states
   int theme_switch = digitalRead(THEME_SWITCH);
+  int startup_switch = digitalRead(STARTUP_SWITCH);
+  int safety_switch = digitalRead(SAFETY_SWITCH);
+  int fire_button = digitalRead(FIRE_BUTTON);
 
-  // if the theme switch has recently changed we should play the full ghostbusters theme song
+  // if the theme switch has recently changed from off to on we 
+  // should play the full ghostbusters theme song
   if (theme_switch == 1) {
     if (theme == false) {
       playTrack(themeTrack);
@@ -215,14 +218,9 @@ void loop() {
   } else {
     theme = false;
   }
-
-  // now get the other switch/button states so we can handle animations/sounds
-  int startup_switch = digitalRead(STARTUP_SWITCH);
-  int safety_switch = digitalRead(SAFETY_SWITCH);
-  int fire_button = digitalRead(FIRE_BUTTON);
-
+ 
   // while the startup switch is set on
-  if (startup_switch == 1) {
+  if (startup_switch == 1) {   
     // in general we always try to play the idle sound if started
     if (playing == 1 && startup == true) {
       playTrack(idleTrack);
@@ -233,6 +231,9 @@ void loop() {
       poweredDown = false;
       shuttingDown = false;
       powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
+      flashWandLED(0, currentMillis, wandFlashInterval);    // set top light white blinking
+      setWandLightState(1, 2);    // set back light orange
+      setWandLightState(3, 0);    //set sloblow red
     } else {
       powerSequenceBoot(currentMillis);
     }
@@ -248,6 +249,10 @@ void loop() {
       }
     }
 
+    if( startup == true && safety_switch == 1 ){
+      setWandLightState(2, 3);    //set body white
+    }
+    
     // if the safety switch is set off then we can fire when the button is pressed
     if ( safety_switch == 1 && fire_button == 0) {
       // if the button is just pressed we clear all led's to start the firing animations
@@ -296,6 +301,7 @@ void loop() {
             firing_interval = 20; // speed up the bar graph animation
             cyc_interval = 50;    // really speed up cyclotron
             cyc_fade_interval = 5;
+            wandFlashInterval = 250;
             if (playing == 1 || shouldWarn == false ) {
               shouldWarn = true;
               playTrack(warnTrack); // play the firing track with the warning
@@ -304,6 +310,7 @@ void loop() {
             pwr_interval = 40;    // speed up the powercell animation
             firing_interval = 30; // speed up the bar graph animation
             cyc_interval = 300;   // speed up cyclotron
+            wandFlashInterval = 500;
             cyc_fade_interval = 10;
             if (playing == 1) {
               playTrack(blastTrack); // play the normal blast track
@@ -317,6 +324,7 @@ void loop() {
           firing_interval = 40;
           cyc_interval = 1000;
           cyc_fade_interval = 15;
+          wandFlashInterval = 1000;
           fire = false;
 
           // see if we've been firing long enough to get the dialog or vent sounds
@@ -368,6 +376,7 @@ void loop() {
     } else {
       // if the safety is switched off play the click track
       if (safety == true) {
+        setWandLightState(2, 4);    //set body off
         safety = false;
         playTrack(clickTrack);
       }
@@ -416,6 +425,44 @@ int powerShutdownSeqNum = 15;       // shutdown sequence counts down from 16
 int currentBootLevel = -1;          // current powercell boot level sequence led
 int currentLightLevel = 15;         // current powercell boot light sequence led
 
+void setWandLightState(int lednum, int state){
+  switch ( state ) {
+    case 0: // set led red
+        wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));
+      break;
+    case 1: // set led white
+      wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));
+      break;
+    case 2: // set led orange
+      wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 0));
+      break;
+    case 3: // set led orange
+      wandLights.setPixelColor(lednum, wandLights.Color(0, 0, 255));
+      break;
+    case 4: // set led off
+      wandLights.setPixelColor(lednum, 0);
+      break;
+  }
+
+  wandLights.show();
+}
+
+unsigned long prevFlashMillis = 0;        // last time we changed a powercell light in the idle sequence
+bool flashState = false;
+void flashWandLED(int lednum, int currentMillis, int flashInterval){
+  if (currentMillis - prevFlashMillis > flashInterval) {
+    prevFlashMillis = currentMillis;
+    if( flashState == false ){
+      wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));
+      flashState = true;
+    }else{
+      wandLights.setPixelColor(lednum, 0);
+      flashState = false;
+    }
+  }
+  wandLights.show();
+}
+
 // helper function to set light states for the cyclotron
 int cyclotronRunningFadeOut = 255;  // we reset this variable every time we change the cyclotron index so the fade effect works
 void setCyclotronLightState(int startLed, int endLed, int state ){
@@ -463,6 +510,11 @@ void clearPowerStrip() {
     powerStick.setPixelColor(i, 0);
   }
   powerStick.show();
+
+  for ( int j=0; j<=3; j++ ){
+    wandLights.setPixelColor(j, 0);
+  }
+  wandLights.show();
 }
 
 // boot animation on the powercell/cyclotron
