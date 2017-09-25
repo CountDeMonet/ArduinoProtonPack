@@ -17,6 +17,16 @@ Adafruit_NeoPixel noseJewel = Adafruit_NeoPixel(7, NEO_NOSE, NEO_GRB + NEO_KHZ80
 #define NEO_POWER 2 // for cyclotron and powercell
 Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(44, NEO_POWER, NEO_GRB + NEO_KHZ800);
 
+// LED indexes into the neopixel powerstick chain for the cyclotron
+int c1Start = 16;
+int c1End = 22;
+int c2Start = 23;
+int c2End = 29;
+int c3Start = 30;
+int c3End = 36;
+int c4Start = 37;
+int c4End = 44;
+
 bool powerBooted = false; // has the pack booted up
 bool poweredDown = true;
 
@@ -34,6 +44,11 @@ const int ACT = 13;// this connects to the act on the board so we can know if th
 // available options
 // ##############################
 const bool useGameCyclotronEffect = true; // set this to true to get the fading previous cyclotron light in the idle sequence
+
+// Possible Pack states
+bool isFiring = false;      // keeps track of the firing state
+bool shouldWarn = false;    // track the warning state for alert audio
+bool shuttingDown = false;  // is the pack in the process of shutting down
 
 // inputs for switches and buttons
 const int THEME_SWITCH = 5;
@@ -69,6 +84,8 @@ const String hardTrack =      "T16     WAV";
 const String neutronizedTrack="T17     WAV";
 const String boxTrack =       "T18     WAV";
 const String themeTrack =     "T19     OGG";
+
+QueueArray <int> dialogQueue; // this queue holds a shuffled list of dialog tracks we can pull from
 
 // dialog trigger times/states
 unsigned long startDialogMillis;
@@ -110,9 +127,6 @@ void setup() {
   digitalWrite(FIRE_BUTTON, HIGH);
 }
 
-bool isFiring = false; // keeps track of the firing state
-bool shouldWarn = false; // track the warning state for alert audio
-
 /* ************* Audio Board Helper Functions ************* */
 // helper function to play a track by name on the audio board
 void playTrack(String trackname) {
@@ -131,17 +145,57 @@ void playTrack(String trackname) {
   }
 }
 
+int getRandomTrack()
+{
+  if ( !dialogQueue.isEmpty() )
+  {
+    // pull the next dialog
+    return dialogQueue.dequeue();
+  }
+  else
+  {
+    // queue is empty so reset it and pull the first
+    // random dialog
+    int numDialog = sizeof(dialogArray) / sizeof(int);
+    shuffleTrackArray( dialogArray, numDialog );
+    
+    for (int i = 0; i < numDialog; i++)
+    {
+      dialogQueue.enqueue(dialogArray[i]);
+    }
+
+    return dialogQueue.dequeue();
+  }
+}
+
+// function for sorting arrays found here. Added random seed
+// https://forum.arduino.cc/index.php?topic=345964.0
+void shuffleTrackArray(int * array, int size)
+{
+  randomSeed(analogRead(A0));
+
+  int last = 0;
+  int temp = array[last];
+  for (int i = 0; i < size; i++)
+  {
+    int index = random(size);
+    array[last] = array[index];
+    last = index;
+  }
+  array[last] = temp;
+}
+
 void stopTrack() {
   sfx.stop();
 }
 
 /* ************* Main Loop ************* */
-int pwr_interval = 60;       // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
+// intervals that can be adjusted in real time to speed up animations 
+int pwr_interval = 60;        // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
 int cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
 int cyc_fade_interval = 15;   // fade the inactive cyclotron to light to nothing
-int firing_interval = 40;    // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
+int firing_interval = 40;     // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
 
-bool shuttingDown = false;
 void loop() {
   // get the current time
   int currentMillis = millis();
@@ -338,59 +392,11 @@ void loop() {
   delay(1);
 }
 
-QueueArray <int> dialogQueue;
-int getRandomTrack()
-{
-  if ( !dialogQueue.isEmpty() )
-  {
-    // pull the next dialog
-    return dialogQueue.dequeue();
-  }
-  else
-  {
-    // queue is empty so reset it and pull the first
-    // random dialog
-    int numDialog = sizeof(dialogArray) / sizeof(int);
-    shuffleArray( dialogArray, numDialog );
-    
-    for (int i = 0; i < numDialog; i++)
-    {
-      dialogQueue.enqueue(dialogArray[i]);
-    }
-
-    return dialogQueue.dequeue();
-  }
-}
-
-// function for sorting arrays found here. Added random seed
-// https://forum.arduino.cc/index.php?topic=345964.0
-void shuffleArray(int * array, int size)
-{
-  randomSeed(analogRead(A0));
-
-  int last = 0;
-  int temp = array[last];
-  for (int i = 0; i < size; i++)
-  {
-    int index = random(size);
-    array[last] = array[index];
-    last = index;
-  }
-  array[last] = temp;
-}
-
-/*************** Powercell Animations *********************/
-int c1Start = 16;
-int c1End = 22;
-int c2Start = 23;
-int c2End = 29;
-int c3Start = 30;
-int c3End = 36;
-int c4Start = 37;
-int c4End = 44;
-
+/*************** Powercell/Cyclotron Animations *********************/
+// timer helpers and intervals for the animations
 unsigned long prevPwrBootMillis = 0;    // the last time we changed a powercell light in the boot sequence
 const int pwr_boot_interval = 41;       // interval at which to cycle lights (milliseconds).
+
 unsigned long prevCycBootMillis = 0;    // the last time we changed a cyclotron light in the boot sequence
 const int cyc_boot_interval = 400;      // interval at which to cycle lights (milliseconds).
 
@@ -399,15 +405,50 @@ const int pwr_shutdown_interval = 200;  // interval at which to cycle lights (mi
 
 unsigned long prevPwrMillis = 0;        // last time we changed a powercell light in the idle sequence
 unsigned long prevCycMillis = 0;        // last time we changed a cyclotron light in the idle sequence
-unsigned long prevFadeCycMillis = 0;        // last time we changed a cyclotron light in the idle sequence
+unsigned long prevFadeCycMillis = 0;    // last time we changed a cyclotron light in the idle sequence
 
-int powerSeqTotal = 15;       // total number of led's for powercell 0 based
-int currentBootLevel = -1;    // current powercell boot sequence led
-int currentLightLevel = 15;   // current powercell shutdown sequence led
-int powerSeqNum = 0;          // current running powercell sequence led
-int powerShutdownSeqNum = 15; // shutdown sequence counts down from 16
+// LED tracking variables
+const int powerSeqTotal = 15;       // total number of led's for powercell 0 based
+int powerSeqNum = 0;                // current running powercell sequence led
+int powerShutdownSeqNum = 15;       // shutdown sequence counts down from 16
 
-// clears out and resets the power cell neopixel
+// animation level trackers for the boot and shutdown
+int currentBootLevel = -1;          // current powercell boot level sequence led
+int currentLightLevel = 15;         // current powercell boot light sequence led
+
+// helper function to set light states for the cyclotron
+int cyclotronRunningFadeOut = 255;  // we reset this variable every time we change the cyclotron index so the fade effect works
+void setCyclotronLightState(int startLed, int endLed, int state ){
+  switch ( state ) {
+    case 0: // set all leds to red
+      for(int i=startLed; i <= endLed; i++) {
+        powerStick.setPixelColor(i, powerStick.Color(255, 0, 0));
+      }
+      break;
+    case 1: // set all leds to orange
+      for(int i=startLed; i <= endLed; i++) {
+        powerStick.setPixelColor(i, powerStick.Color(255, 106, 0));
+      }
+      break;
+    case 2: // set all leds off
+      for(int i=startLed; i <= endLed; i++) {
+        powerStick.setPixelColor(i, 0);
+      }
+      break;
+    case 3: // fade all leds from red
+      for(int i=startLed; i <= endLed; i++) {
+        if( cyclotronRunningFadeOut >= 0 ){
+          powerStick.setPixelColor(i, 255 * cyclotronRunningFadeOut/255, 0, 0);
+          cyclotronRunningFadeOut--;
+        }else{
+          powerStick.setPixelColor(i, 0);
+        }
+      }
+      break;
+  }
+}
+
+// shuts off and resets the powercell/cyclotron leds
 void clearPowerStrip() {
   // reset vars
   powerBooted = false;
@@ -424,8 +465,8 @@ void clearPowerStrip() {
   powerStick.show();
 }
 
+// boot animation on the powercell/cyclotron
 bool reverseBootCyclotron = false;
-// boot animation on the powercell
 void powerSequenceBoot(int currentMillis) {
   bool doUpdate = false;
   
@@ -485,86 +526,14 @@ void powerSequenceBoot(int currentMillis) {
   }
 }
 
-int cyclotronRunningFadeOut = 255;
-void setCyclotronLightState(int startLed, int endLed, int state ){
-  switch ( state ) {
-    case 0:
-      for(int i=startLed; i <= endLed; i++) { // red
-        powerStick.setPixelColor(i, powerStick.Color(255, 0, 0));
-      }
-      break;
-    case 1:
-      for(int i=startLed; i <= endLed; i++) { // orange
-        powerStick.setPixelColor(i, powerStick.Color(255, 106, 0));
-      }
-      break;
-    case 2:
-      for(int i=startLed; i <= endLed; i++) { // off
-        powerStick.setPixelColor(i, 0);
-      }
-      break;
-    case 3:
-      for(int i=startLed; i <= endLed; i++) {
-        if( cyclotronRunningFadeOut >= 0 ){
-          powerStick.setPixelColor(i, 255 * cyclotronRunningFadeOut/255, 0, 0);
-          cyclotronRunningFadeOut--;
-        }else{
-          powerStick.setPixelColor(i, 0);
-        }
-      }
-      break;
-  }
-}
-
-int cyclotronFadeOut = 255;
-// shutdown animation on the powercell
-void powerSequenceShutdown(int currentMillis) {
-  if (currentMillis - prevShtdMillis > pwr_shutdown_interval) {
-    prevShtdMillis = currentMillis;
-
-    // START CYCLOTRON
-    for(int i=c1Start; i <= c4End; i++) {
-      if( cyclotronFadeOut >= 0 ){
-        powerStick.setPixelColor(i, 255 * cyclotronFadeOut/255, 0, 0);
-        cyclotronFadeOut--;
-      }else{
-        powerStick.setPixelColor(i, 0);
-      }
-    }
-    // END CYCLOTRON
-    
-    // START POWERCELL
-    for ( int i = powerSeqTotal; i >= 0; i--) {
-      if ( i <= powerShutdownSeqNum ) {
-        powerStick.setPixelColor(i, powerStick.Color(0, 0, 150));
-      } else {
-        powerStick.setPixelColor(i, 0);
-      }
-    }
-    
-    powerStick.show();
-    
-    if ( powerShutdownSeqNum >= 0) {
-      powerShutdownSeqNum--;
-    } else {
-      poweredDown = true;
-      powerShutdownSeqNum = 15;
-      cyclotronFadeOut = 255;
-    }
-    // END POWERCELL
-  }
-}
-
-int cycOrder = 0;
-int cycFading = -1;
-
-// normal animation on the bar graph
+// idle/firing animation for the powercell/cyclotron
+int cycOrder = 0;     // which cyclotron led will be lit next
+int cycFading = -1;   // which cyclotron led is fading out for game style
 void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfadespeed) {
-  bool doUpdate = false;
+  bool doUpdate = false;  // keep track of if we changed something so we only update on changes
 
   // START CYCLOTRON 
-  if( useGameCyclotronEffect == true ){
-    // figure out main light
+  if( useGameCyclotronEffect == true ){ // if we are doing the video game style cyclotron
     if (currentMillis - prevCycMillis > cycspeed) {
       prevCycMillis = currentMillis;
       
@@ -627,8 +596,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
         doUpdate = true;
       }
     }
-  }else{
-    // figure out main light
+  }else{ // otherwise this is the standard version
     if (currentMillis - prevCycMillis > cycspeed) {
       prevCycMillis = currentMillis;
       
@@ -705,7 +673,46 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
   }
 }
 
-/*************** Firing Animations *********************/
+// shutdown animation for the powercell/cyclotron
+int cyclotronFadeOut = 255;
+void powerSequenceShutdown(int currentMillis) {
+  if (currentMillis - prevShtdMillis > pwr_shutdown_interval) {
+    prevShtdMillis = currentMillis;
+
+    // START CYCLOTRON
+    for(int i=c1Start; i <= c4End; i++) {
+      if( cyclotronFadeOut >= 0 ){
+        powerStick.setPixelColor(i, 255 * cyclotronFadeOut/255, 0, 0);
+        cyclotronFadeOut--;
+      }else{
+        powerStick.setPixelColor(i, 0);
+      }
+    }
+    // END CYCLOTRON
+    
+    // START POWERCELL
+    for ( int i = powerSeqTotal; i >= 0; i--) {
+      if ( i <= powerShutdownSeqNum ) {
+        powerStick.setPixelColor(i, powerStick.Color(0, 0, 150));
+      } else {
+        powerStick.setPixelColor(i, 0);
+      }
+    }
+    
+    powerStick.show();
+    
+    if ( powerShutdownSeqNum >= 0) {
+      powerShutdownSeqNum--;
+    } else {
+      poweredDown = true;
+      powerShutdownSeqNum = 15;
+      cyclotronFadeOut = 255;
+    }
+    // END POWERCELL
+  }
+}
+
+/*************** Nose Jewel Firing Animations *********************/
 unsigned long prevFireMillis = 0;
 const int fire_interval = 50;     // interval at which to cycle lights (milliseconds).
 int fireSeqNum = 0;
@@ -791,12 +798,12 @@ void fireStrobe(int currentMillis) {
 
 /*************** Bar Graph Animations *********************/
 void shutdown_leds() {
-  // stubb function for when I re-enable to bargraph
+  // stub function for when I re-enable to bargraph
 }
 void barGraphSequenceOne(int currentMillis) {
-  // stubb function for when I re-enable to bargraph
+  // stub function for when I re-enable to bargraph
 }
 void barGraphSequenceTwo(int currentMillis) {
-  // stubb function for when I re-enable to bargraph
+  // stub function for when I re-enable to bargraph
 }
 
