@@ -11,7 +11,7 @@
 #define LOW  0x0
 
 #define NEO_POWER 2 // for cyclotron and powercell
-Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(44, NEO_POWER, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(46, NEO_POWER, NEO_GRB + NEO_KHZ800);
 
 // neopixel pins / setup
 #define NEO_NOSE 3 // for nose of wand
@@ -29,7 +29,9 @@ int c2End = 29;
 int c3Start = 30;
 int c3End = 36;
 int c4Start = 37;
-int c4End = 44;
+int c4End = 43;
+int ventStart = 44;
+int ventEnd = 45;
 
 // inputs for switches and buttons
 const int THEME_SWITCH = 5;
@@ -57,6 +59,7 @@ bool isFiring = false;      // keeps track of the firing state
 bool shouldWarn = false;    // track the warning state for alert audio
 bool shuttingDown = false;  // is the pack in the process of shutting down
 bool poweredDown = true;
+bool venting = false;
 
 // current switch states
 bool startup = false;
@@ -234,6 +237,8 @@ void loop() {
       powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
       setWandLightState(1, 2, 0);               // set back light orange
       setWandLightState(3, 0, 0);               //set sloblow red
+      venting = false;
+      setVentLightState(ventStart, ventEnd, 2);
     } else {
       powerSequenceBoot(currentMillis);
     }
@@ -330,6 +335,7 @@ void loop() {
 
           if ( diff > warnWaitTime) { // if we are past the warning let's vent the pack
             playTrack(ventTrack);
+            venting = true;
             clearPowerStrip(); // play the boot animation on the powercell
           } else if ( diff > dialogWaitTime) { // if in the dialog time play the dialog in sequence
             switch (getRandomTrack())
@@ -436,6 +442,27 @@ void setWandLightState(int lednum, int state, int currentMillis){
   wandLights.show();
 }
 
+/*************** Vent Light *************************/
+void setVentLightState(int startLed, int endLed, int state ){
+  switch ( state ) {
+    case 0: // set all leds to white
+      for(int i=startLed; i <= endLed; i++) {
+        powerStick.setPixelColor(i, powerStick.Color(255, 255, 255));
+      }
+      break;
+    case 1: // set all leds to blue
+      for(int i=startLed; i <= endLed; i++) {
+        powerStick.setPixelColor(i, powerStick.Color(0, 0, 255));
+      }
+      break;
+    case 2: // set all leds off
+      for(int i=startLed; i <= endLed; i++) {
+        powerStick.setPixelColor(i, 0);
+      }
+      break;
+  }
+}
+
 /*************** Powercell/Cyclotron Animations *********************/
 // timer helpers and intervals for the animations
 unsigned long prevPwrBootMillis = 0;    // the last time we changed a powercell light in the boot sequence
@@ -512,6 +539,10 @@ void clearPowerStrip() {
     wandLights.setPixelColor(j, 0);
   }
   wandLights.show();
+
+  if( venting == true ){
+    setVentLightState(ventStart, ventEnd, 0);
+  }
 }
 
 // boot animation on the powercell/cyclotron
