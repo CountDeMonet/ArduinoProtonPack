@@ -196,7 +196,6 @@ int pwr_interval = 60;        // interval at which to cycle lights for the power
 int cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
 int cyc_fade_interval = 15;   // fade the inactive cyclotron to light to nothing
 int firing_interval = 40;     // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
-int wandFlashInterval = 1000; // interval at which we flash the top led on the wand
 
 void loop() {
   // get the current time
@@ -235,8 +234,8 @@ void loop() {
       poweredDown = false;
       shuttingDown = false;
       powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
-      setWandLightState(1, 2, 0);               // set back light orange
-      setWandLightState(3, 0, 0);               //set sloblow red
+      setWandLightState(1, 2);               // set back light orange
+      setWandLightState(3, 0);               //set sloblow red
       venting = false;
       setVentLightState(ventStart, ventEnd, 2);
     } else {
@@ -255,7 +254,11 @@ void loop() {
     }
 
     if( startup == true && safety_switch == 1 ){
-      setWandLightState(2, 3, 0);    //set body blue
+      if( venting == false && powerBooted == true ){
+        setWandLightState(2, 3);    //set body blue
+      }else{
+        setWandLightState(2, 4);    //set body blue
+      }
     }
     
     // if the safety switch is set off then we can fire when the button is pressed
@@ -302,19 +305,19 @@ void loop() {
           long diff = millis() - startDialogMillis;
           // if we are in the warn interval
           if ( diff > warnWaitTime) {
-            pwr_interval = 20;    // speed up the powercell animation
+            pwr_interval = 10;    // speed up the powercell animation
             firing_interval = 20; // speed up the bar graph animation
             cyc_interval = 50;    // really speed up cyclotron
             cyc_fade_interval = 5;
             if (playing == 1 || shouldWarn == false ) {
               shouldWarn = true;
               playTrack(warnTrack); // play the firing track with the warning
-              setWandLightState(0, 2, 0);    // set top light orange
+              setWandLightState(0, 2);    // set top light orange
             }
           } else if ( diff > dialogWaitTime) { // if we are in the dialog playing interval
-            pwr_interval = 40;    // speed up the powercell animation
+            pwr_interval = 30;    // speed up the powercell animation
             firing_interval = 30; // speed up the bar graph animation
-            cyc_interval = 300;   // speed up cyclotron
+            cyc_interval = 200;   // speed up cyclotron
             cyc_fade_interval = 10;
             if (playing == 1) {
               playTrack(blastTrack); // play the normal blast track
@@ -380,7 +383,7 @@ void loop() {
     } else {
       // if the safety is switched off play the click track
       if (safety == true) {
-        setWandLightState(2, 4, 0);    //set body off
+        setWandLightState(2, 4);    //set body off
         safety = false;
         playTrack(clickTrack);
       }
@@ -408,7 +411,7 @@ void loop() {
 /*************** Wand Light Helpers *********************/
 unsigned long prevFlashMillis = 0; // last time we changed a powercell light in the idle sequence
 bool flashState = false;
-void setWandLightState(int lednum, int state, int currentMillis){
+void setWandLightState(int lednum, int state){
   switch ( state ) {
     case 0: // set led red
       wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));
@@ -424,18 +427,6 @@ void setWandLightState(int lednum, int state, int currentMillis){
       break;
     case 4: // set led off
       wandLights.setPixelColor(lednum, 0);
-      break;
-    case 5: 
-      if (currentMillis - prevFlashMillis > wandFlashInterval) {
-        prevFlashMillis = currentMillis;
-        if( flashState == false ){
-          wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));
-          flashState = true;
-        }else{
-          wandLights.setPixelColor(lednum, 0);
-          flashState = false;
-        }
-      }
       break;
   }
 
