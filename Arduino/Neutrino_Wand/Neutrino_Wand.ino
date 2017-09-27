@@ -52,7 +52,7 @@ Adafruit_Soundboard sfx = Adafruit_Soundboard( & ss, NULL, SFX_RST);
 // available options
 // ##############################
 const bool useGameCyclotronEffect = true;   // set this to true to get the fading previous cyclotron light in the idle sequence
-const bool useCyclotronFadeInEffect = true; // Instead of the yellow alternate flashing on boot/vent this fades the cyclotron in from off to red
+const bool useCyclotronFadeInEffect = false; // Instead of the yellow alternate flashing on boot/vent this fades the cyclotron in from off to red
 const bool useDialogTracks = true;          // set to true if you want the dialog tracks to play after firing for 5 seconds
 
 // Possible Pack states
@@ -523,13 +523,15 @@ unsigned long prevCycMillis = 0;        // last time we changed a cyclotron ligh
 unsigned long prevFadeCycMillis = 0;    // last time we changed a cyclotron light in the idle sequence
 
 // LED tracking variables
-const int powerSeqTotal = 15;       // total number of led's for powercell 0 based
-int powerSeqNum = 0;                // current running powercell sequence led
-int powerShutdownSeqNum = 15;       // shutdown sequence counts down from 16
+const int powercellLedCount = 15;                                         // total number of led's in the animation
+const int powercellIndexOffset = 0;                                       // first led offset into the led chain for the animation
+const int powerSeqTotal = powercellLedCount;                              // total number of led's for powercell 0 based
+int powerSeqNum = powercellIndexOffset;                                   // current running powercell sequence led
+int powerShutdownSeqNum = powercellLedCount - powercellIndexOffset;       // shutdown sequence counts down
 
 // animation level trackers for the boot and shutdown
-int currentBootLevel = -1;          // current powercell boot level sequence led
-int currentLightLevel = 15;         // current powercell boot light sequence led
+int currentBootLevel = powercellIndexOffset;                              // current powercell boot level sequence led
+int currentLightLevel = powercellLedCount - powercellIndexOffset;         // current powercell boot light sequence led
 
 void setCyclotronLightState(int startLed, int endLed, int state ){
   switch ( state ) {
@@ -576,10 +578,10 @@ void clearPowerStrip() {
   // reset vars
   powerBooted = false;
   poweredDown = true;
-  powerSeqNum = 0;
-  powerShutdownSeqNum = 15;
-  currentLightLevel = 15;
-  currentBootLevel = -1;
+  powerSeqNum = powercellIndexOffset;
+  powerShutdownSeqNum = powercellLedCount - powercellIndexOffset;
+  currentLightLevel = powercellLedCount;
+  currentBootLevel = powercellIndexOffset;
   cyclotronRunningFadeIn = 0;
   
   // shutoff the leds
@@ -642,21 +644,24 @@ void powerSequenceBoot(int currentMillis) {
     // START POWERCELL
     if( currentBootLevel != powerSeqTotal ){
       if( currentBootLevel == currentLightLevel){
-        powerStick.setPixelColor(currentBootLevel, powerStick.Color(0, 0, 150));
+        if(currentLightLevel+1 <= powerSeqTotal){
+          powerStick.setPixelColor(currentLightLevel+1, 0);
+        }
+        powerStick.setPixelColor(currentBootLevel, powerStick.Color(0, 0, 255));
         currentLightLevel = powerSeqTotal;
         currentBootLevel++;
       }else{
         if(currentLightLevel+1 <= powerSeqTotal){
           powerStick.setPixelColor(currentLightLevel+1, 0);
         }
-        powerStick.setPixelColor(currentLightLevel, powerStick.Color(0, 0, 150));
+        powerStick.setPixelColor(currentLightLevel, powerStick.Color(0, 0, 255));
         currentLightLevel--;
       }
       doUpdate = true;
     }else{
       powerBooted = true;
-      currentBootLevel = -1;
-      currentLightLevel = 15;
+      currentBootLevel = powercellIndexOffset;
+      currentLightLevel = powercellLedCount - powercellIndexOffset;
     }
     // END POWERCELL
   }
@@ -790,7 +795,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
     // save the last time you blinked the LED
     prevPwrMillis = currentMillis;
 
-    for ( int i = 0; i <= powerSeqTotal; i++) {
+    for ( int i = powercellIndexOffset; i <= powerSeqTotal; i++) {
       if ( i <= powerSeqNum ) {
         powerStick.setPixelColor(i, powerStick.Color(0, 0, 150));
       } else {
@@ -801,7 +806,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
     if ( powerSeqNum <= powerSeqTotal) {
       powerSeqNum++;
     } else {
-      powerSeqNum = 0;
+      powerSeqNum = powercellIndexOffset;
     }
 
     doUpdate = true;
@@ -832,7 +837,7 @@ void powerSequenceShutdown(int currentMillis) {
     // END CYCLOTRON
     
     // START POWERCELL
-    for ( int i = powerSeqTotal; i >= 0; i--) {
+    for ( int i = powerSeqTotal; i >= powercellIndexOffset; i--) {
       if ( i <= powerShutdownSeqNum ) {
         powerStick.setPixelColor(i, powerStick.Color(0, 0, 150));
       } else {
@@ -842,11 +847,11 @@ void powerSequenceShutdown(int currentMillis) {
     
     powerStick.show();
     
-    if ( powerShutdownSeqNum >= 0) {
+    if ( powerShutdownSeqNum >= powercellIndexOffset) {
       powerShutdownSeqNum--;
     } else {
       poweredDown = true;
-      powerShutdownSeqNum = 15;
+      powerShutdownSeqNum = powercellLedCount - powercellIndexOffset;
       cyclotronFadeOut = 255;
     }
     // END POWERCELL
