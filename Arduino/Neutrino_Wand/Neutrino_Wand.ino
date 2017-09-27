@@ -52,6 +52,7 @@ Adafruit_Soundboard sfx = Adafruit_Soundboard( & ss, NULL, SFX_RST);
 // available options
 // ##############################
 const bool useGameCyclotronEffect = true; // set this to true to get the fading previous cyclotron light in the idle sequence
+const bool useCyclotronFadeInEffect = true; // Instead of the yellow alternate flashing on boot/vent this fades the cyclotron in from off to red
 
 // Possible Pack states
 bool powerBooted = false; // has the pack booted up
@@ -84,8 +85,6 @@ const String toolsTrack =     "T11     WAV";
 const String listenTrack =    "T12     WAV";
 const String goodTrack =      "T13     WAV";
 const String thatTrack =      "T14     WAV";
-const String neverTrack =     "T15     WAV";
-const String hardTrack =      "T16     WAV";
 const String neutronizedTrack="T17     WAV";
 const String boxTrack =       "T18     WAV";
 const String themeTrack =     "T19     OGG";
@@ -93,17 +92,16 @@ const String themeTrack =     "T19     OGG";
 // this queue holds a shuffled list of dialog tracks we can pull from so we don't
 // play the same ones twice
 QueueArray <int> dialogQueue; 
+int numDialog = 8;
+int dialogArray[8] = {1,2,3,4,5,6,7,8};
 
 // dialog trigger times/states
 unsigned long startDialogMillis;
-int dialogArray[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}; // array with an index for each dialog
 const int dialogWaitTime = 5000; // how long to hold down fire for a dialog to play
 const int warnWaitTime = 10000;  // how long to hold down fire before warning sounds
 
 // Arduino setup function
-void setup() {
-  randomSeed(analogRead(A0)); // try to get a good random seed
-  
+void setup() {  
   // softwareserial at 9600 baud for the audio board
   ss.begin(9600);
 
@@ -164,12 +162,16 @@ int getRandomTrack(){
     // pull the next dialog
     return dialogQueue.dequeue();
   }else{
-    // queue is empty so reset it and pull the first
-    // random dialog
-    int numDialog = sizeof(dialogArray) / sizeof(int);
-    shuffleTrackArray( dialogArray, numDialog );
-    
-    for (int i = 0; i < numDialog; i++){
+    randomSeed(micros() +  ss.read());
+  
+    for (int i=0; i<numDialog; i++){
+      int pos = random(numDialog);
+      int t = dialogArray[i];   
+      dialogArray[i] = dialogArray[pos];
+      dialogArray[pos] = t;
+    }
+
+    for (int i=0; i<numDialog; i++){
       dialogQueue.enqueue(dialogArray[i]);
     }
 
@@ -177,20 +179,11 @@ int getRandomTrack(){
   }
 }
 
-// function for sorting arrays found here.
-// https://forum.arduino.cc/index.php?topic=345964.0
-void shuffleTrackArray(int * array, int size){
-  int last = 0;
-  int temp = array[last];
-  for (int i = 0; i < size; i++){
-    int index = random(size);
-    array[last] = array[index];
-    last = index;
-  }
-  array[last] = temp;
-}
-
 /* ************* Main Loop ************* */
+// helper function to set light states for the cyclotron
+int cyclotronRunningFadeOut = 255;  // we reset this variable every time we change the cyclotron index so the fade effect works
+int cyclotronRunningFadeIn = 0;  // we reset this variable every time we change the cyclotron index so the fade effect works
+
 // intervals that can be adjusted in real time to speed up animations 
 int pwr_interval = 60;        // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
 int cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
@@ -234,11 +227,11 @@ void loop() {
       poweredDown = false;
       shuttingDown = false;
       powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
-      setWandLightState(1, 2);               // set back light orange
-      setWandLightState(3, 0);               //set sloblow red
+      setWandLightState(3, 0, 0);               //set sloblow red
       venting = false;
       setVentLightState(ventStart, ventEnd, 2);
     } else {
+      setWandLightState(3, 7, currentMillis);   //set sloblow red blinking
       powerSequenceBoot(currentMillis);
     }
 
@@ -255,9 +248,11 @@ void loop() {
 
     if( startup == true && safety_switch == 1 ){
       if( venting == false && powerBooted == true ){
-        setWandLightState(2, 3);    //set body blue
+        setWandLightState(1, 2, 0);    //  set back light orange
+        setWandLightState(2, 3, 0);    //  set body led blue
       }else{
-        setWandLightState(2, 4);    //set body blue
+        setWandLightState(1, 4, 0);    //  set back light off
+        setWandLightState(2, 4, 0);    //  set body led off
       }
     }
     
@@ -312,8 +307,8 @@ void loop() {
             if (playing == 1 || shouldWarn == false ) {
               shouldWarn = true;
               playTrack(warnTrack); // play the firing track with the warning
-              setWandLightState(0, 2);    // set top light orange
             }
+            setWandLightState(0, 8, currentMillis);    // set top light red flashing
           } else if ( diff > dialogWaitTime) { // if we are in the dialog playing interval
             pwr_interval = 30;    // speed up the powercell animation
             firing_interval = 30; // speed up the bar graph animation
@@ -322,11 +317,14 @@ void loop() {
             if (playing == 1) {
               playTrack(blastTrack); // play the normal blast track
             }
+            setWandLightState(0, 6, currentMillis);    // set top light orange flashing
           }
         }
       } else { // now the button is no longer pressed
         if (fire == true) { // if we were firing let's reset the animations and play the correct final firing track
           clearFireStrobe();
+          setWandLightState(0, 4, currentMillis);    // set top light off
+          
           pwr_interval = 60;
           firing_interval = 40;
           cyc_interval = 1000;
@@ -361,17 +359,14 @@ void loop() {
               case (6):
                 playTrack(thatTrack);
                 break;
-              case (7):
-                playTrack(neverTrack);
-                break;
               case (8):
-                playTrack(hardTrack);
-                break;
-              case (9):
                 playTrack(neutronizedTrack);
                 break;
-              case (10):
+              case (9):
                 playTrack(boxTrack);
+                break;
+              default: 
+                playTrack(endTrack);
                 break;
             }
           } else {
@@ -383,7 +378,8 @@ void loop() {
     } else {
       // if the safety is switched off play the click track
       if (safety == true) {
-        setWandLightState(2, 4);    //set body off
+        setWandLightState(1, 4, 0);    //  set back light off
+        setWandLightState(2, 4, 0);    //set body off
         safety = false;
         playTrack(clickTrack);
       }
@@ -394,6 +390,7 @@ void loop() {
         playTrack(shutdownTrack); // play the pack shutdown track
         shuttingDown = true;
       }
+      cyclotronRunningFadeOut = 255;
       powerSequenceShutdown(currentMillis);
     }else{
       if (startup == true) { // if started reset the variables
@@ -411,7 +408,9 @@ void loop() {
 /*************** Wand Light Helpers *********************/
 unsigned long prevFlashMillis = 0; // last time we changed a powercell light in the idle sequence
 bool flashState = false;
-void setWandLightState(int lednum, int state){
+int wandFastFlashInterval = 100; // interval at which we flash the top led on the wand
+int wandMediumFlashInterval = 500; // interval at which we flash the top led on the wand
+void setWandLightState(int lednum, int state, int currentMillis){
   switch ( state ) {
     case 0: // set led red
       wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));
@@ -427,6 +426,54 @@ void setWandLightState(int lednum, int state){
       break;
     case 4: // set led off
       wandLights.setPixelColor(lednum, 0);
+      break;
+    case 5: // fast white flashing    
+      if (currentMillis - prevFlashMillis > wandFastFlashInterval) {    
+        prevFlashMillis = currentMillis;    
+        if( flashState == false ){    
+          wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));    
+          flashState = true;    
+        }else{    
+          wandLights.setPixelColor(lednum, 0);    
+          flashState = false;   
+        }   
+      }   
+      break;
+    case 6: // slower orange flashing    
+      if (currentMillis - prevFlashMillis > wandMediumFlashInterval) {    
+        prevFlashMillis = currentMillis;    
+        if( flashState == false ){    
+          wandLights.setPixelColor(lednum, wandLights.Color(255, 127, 0));    
+          flashState = true;    
+        }else{    
+          wandLights.setPixelColor(lednum, 0);    
+          flashState = false;   
+        }   
+      }   
+      break;
+    case 7: // medium red flashing    
+      if (currentMillis - prevFlashMillis > wandMediumFlashInterval) {    
+        prevFlashMillis = currentMillis;    
+        if( flashState == false ){    
+          wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));    
+          flashState = true;    
+        }else{    
+          wandLights.setPixelColor(lednum, 0);    
+          flashState = false;   
+        }   
+      }   
+      break;
+    case 8: // fast red flashing    
+      if (currentMillis - prevFlashMillis > wandFastFlashInterval) {    
+        prevFlashMillis = currentMillis;    
+        if( flashState == false ){    
+          wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));    
+          flashState = true;    
+        }else{    
+          wandLights.setPixelColor(lednum, 0);    
+          flashState = false;   
+        }   
+      }   
       break;
   }
 
@@ -461,6 +508,7 @@ const int pwr_boot_interval = 41;       // interval at which to cycle lights (mi
 
 unsigned long prevCycBootMillis = 0;    // the last time we changed a cyclotron light in the boot sequence
 const int cyc_boot_interval = 400;      // interval at which to cycle lights (milliseconds).
+const int cyc_boot_alt_interval = 600;      // interval at which to cycle lights (milliseconds).
 
 unsigned long prevShtdMillis = 0;       // last time we changed a light in the idle sequence
 const int pwr_shutdown_interval = 200;  // interval at which to cycle lights (milliseconds).
@@ -478,8 +526,6 @@ int powerShutdownSeqNum = 15;       // shutdown sequence counts down from 16
 int currentBootLevel = -1;          // current powercell boot level sequence led
 int currentLightLevel = 15;         // current powercell boot light sequence led
 
-// helper function to set light states for the cyclotron
-int cyclotronRunningFadeOut = 255;  // we reset this variable every time we change the cyclotron index so the fade effect works
 void setCyclotronLightState(int startLed, int endLed, int state ){
   switch ( state ) {
     case 0: // set all leds to red
@@ -507,6 +553,16 @@ void setCyclotronLightState(int startLed, int endLed, int state ){
         }
       }
       break;
+    case 4: // fade all leds to red
+      for(int i=startLed; i <= endLed; i++) {
+        if( cyclotronRunningFadeIn < 255 ){
+          powerStick.setPixelColor(i, 255 * cyclotronRunningFadeIn/255, 0, 0);
+          cyclotronRunningFadeIn++;
+        }else{
+          powerStick.setPixelColor(i, powerStick.Color(255, 0, 0));
+        }
+      }
+      break;
   }
 }
 
@@ -519,6 +575,7 @@ void clearPowerStrip() {
   powerShutdownSeqNum = 15;
   currentLightLevel = 15;
   currentBootLevel = -1;
+  cyclotronRunningFadeIn = 0;
   
   // shutoff the leds
   for ( int i = 0; i <= c4End; i++) {
@@ -540,30 +597,38 @@ void clearPowerStrip() {
 bool reverseBootCyclotron = false;
 void powerSequenceBoot(int currentMillis) {
   bool doUpdate = false;
-  
-  if (currentMillis - prevCycBootMillis > cyc_boot_interval) {
-    prevCycBootMillis = currentMillis;
-    
-    // START CYCLOTRON
-    if( reverseBootCyclotron == false ){
-      setCyclotronLightState(c1Start, c1End, 1);
-      setCyclotronLightState(c2Start, c2End, 2);
-      setCyclotronLightState(c3Start, c3End, 1);
-      setCyclotronLightState(c4Start, c4End, 2);
-      
-      doUpdate = true;
-      reverseBootCyclotron = true;
-    }else{
-      setCyclotronLightState(c1Start, c1End, 2);
-      setCyclotronLightState(c2Start, c2End, 1);
-      setCyclotronLightState(c3Start, c3End, 2);
-      setCyclotronLightState(c4Start, c4End, 1);
-      
-      doUpdate = true;
-      reverseBootCyclotron = false;
+
+  // START CYCLOTRON
+  if( useCyclotronFadeInEffect == false ){
+    if (currentMillis - prevCycBootMillis > cyc_boot_interval) {
+      prevCycBootMillis = currentMillis;
+
+      if( reverseBootCyclotron == false ){
+        setCyclotronLightState(c1Start, c1End, 1);
+        setCyclotronLightState(c2Start, c2End, 2);
+        setCyclotronLightState(c3Start, c3End, 1);
+        setCyclotronLightState(c4Start, c4End, 2);
+        
+        doUpdate = true;
+        reverseBootCyclotron = true;
+      }else{
+        setCyclotronLightState(c1Start, c1End, 2);
+        setCyclotronLightState(c2Start, c2End, 1);
+        setCyclotronLightState(c3Start, c3End, 2);
+        setCyclotronLightState(c4Start, c4End, 1);
+        
+        doUpdate = true;
+        reverseBootCyclotron = false;
+      }
     }
-    // END CYCLOTRON
+  }else{
+    if (currentMillis - prevCycBootMillis > cyc_boot_alt_interval) {
+      prevCycBootMillis = currentMillis;
+      setCyclotronLightState(c1Start, c4End, 4);
+      doUpdate = true;
+    }
   }
+  // END CYCLOTRON
   
   if (currentMillis - prevPwrBootMillis > pwr_boot_interval) {
     // save the last time you blinked the LED
