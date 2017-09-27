@@ -51,8 +51,9 @@ Adafruit_Soundboard sfx = Adafruit_Soundboard( & ss, NULL, SFX_RST);
 // ##############################
 // available options
 // ##############################
-const bool useGameCyclotronEffect = true; // set this to true to get the fading previous cyclotron light in the idle sequence
+const bool useGameCyclotronEffect = true;   // set this to true to get the fading previous cyclotron light in the idle sequence
 const bool useCyclotronFadeInEffect = true; // Instead of the yellow alternate flashing on boot/vent this fades the cyclotron in from off to red
+const bool useDialogTracks = true;          // set to true if you want the dialog tracks to play after firing for 5 seconds
 
 // Possible Pack states
 bool powerBooted = false; // has the pack booted up
@@ -339,35 +340,39 @@ void loop() {
             venting = true;
             clearPowerStrip(); // play the boot animation on the powercell
           } else if ( diff > dialogWaitTime) { // if in the dialog time play the dialog in sequence
-            switch (getRandomTrack())
-            {
-              case (1):
-                playTrack(choreTrack);
-                break;
-              case (2):
-                playTrack(toolsTrack);
-                break;
-              case (3):
-                playTrack(texTrack);
-                break;
-              case (4):
-                playTrack(listenTrack);
-                break;
-              case (5):
-                playTrack(goodTrack);
-                break;
-              case (6):
-                playTrack(thatTrack);
-                break;
-              case (8):
-                playTrack(neutronizedTrack);
-                break;
-              case (9):
-                playTrack(boxTrack);
-                break;
-              default: 
-                playTrack(endTrack);
-                break;
+            if( useDialogTracks == true ){
+              switch (getRandomTrack())
+              {
+                case (1):
+                  playTrack(choreTrack);
+                  break;
+                case (2):
+                  playTrack(toolsTrack);
+                  break;
+                case (3):
+                  playTrack(texTrack);
+                  break;
+                case (4):
+                  playTrack(listenTrack);
+                  break;
+                case (5):
+                  playTrack(goodTrack);
+                  break;
+                case (6):
+                  playTrack(thatTrack);
+                  break;
+                case (8):
+                  playTrack(neutronizedTrack);
+                  break;
+                case (9):
+                  playTrack(boxTrack);
+                  break;
+                default: 
+                  playTrack(endTrack);
+                  break;
+              }
+            }else{
+              playTrack(endTrack);
             }
           } else {
             // otherwise play the standard power down track
