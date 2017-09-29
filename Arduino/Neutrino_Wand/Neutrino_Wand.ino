@@ -10,18 +10,20 @@
 #define HIGH 0x1
 #define LOW  0x0
 
-#define NEO_POWER 2 // for cyclotron and powercell
-Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(46, NEO_POWER, NEO_GRB + NEO_KHZ800);
-
 // neopixel pins / setup
+#define NEO_POWER 2 // for cyclotron and powercell
+Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(48, NEO_POWER, NEO_GRB + NEO_KHZ800);
+
 #define NEO_NOSE 3 // for nose of wand
 Adafruit_NeoPixel noseJewel = Adafruit_NeoPixel(7, NEO_NOSE, NEO_GRB + NEO_KHZ800);
 
-// neopixel pins / setup
 #define NEO_WAND 4 // for nose of wand
 Adafruit_NeoPixel wandLights = Adafruit_NeoPixel(4, NEO_WAND, NEO_GRB + NEO_KHZ800);
 
 // LED indexes into the neopixel powerstick chain for the cyclotron
+const int powercellLedCount = 14;                                         // total number of led's in the animation
+const int powercellIndexOffset = 1;                                       // first led offset into the led chain for the animation
+
 int c1Start = 16;
 int c1End = 22;
 int c2Start = 23;
@@ -31,7 +33,7 @@ int c3End = 36;
 int c4Start = 37;
 int c4End = 43;
 int ventStart = 44;
-int ventEnd = 45;
+int ventEnd = 47;
 
 // inputs for switches and buttons
 const int THEME_SWITCH = 5;
@@ -56,14 +58,14 @@ const bool useCyclotronFadeInEffect = false; // Instead of the yellow alternate 
 const bool useDialogTracks = true;          // set to true if you want the dialog tracks to play after firing for 5 seconds
 
 // Possible Pack states
-bool powerBooted = false; // has the pack booted up
+bool powerBooted = false;   // has the pack booted up
 bool isFiring = false;      // keeps track of the firing state
 bool shouldWarn = false;    // track the warning state for alert audio
 bool shuttingDown = false;  // is the pack in the process of shutting down
-bool poweredDown = true;
-bool venting = false;
+bool poweredDown = true;    // is the pack powered down
+bool venting = false;       // is the pack venting
 
-// current switch states
+// physical switch states
 bool startup = false;
 bool theme = false;
 bool safety = false;
@@ -84,7 +86,6 @@ const String texTrack =       "T09     WAV";
 const String choreTrack =     "T10     WAV";
 const String toolsTrack =     "T11     WAV";
 const String listenTrack =    "T12     WAV";
-const String goodTrack =      "T13     WAV";
 const String thatTrack =      "T14     WAV";
 const String neutronizedTrack="T17     WAV";
 const String boxTrack =       "T18     WAV";
@@ -92,14 +93,13 @@ const String themeTrack =     "T19     OGG";
 
 // this queue holds a shuffled list of dialog tracks we can pull from so we don't
 // play the same ones twice
-QueueArray <int> dialogQueue; 
-int numDialog = 8;
-int dialogArray[8] = {1,2,3,4,5,6,7,8};
+QueueArray <int> dialogQueue;
+int numDialog = 7;
 
-// dialog trigger times/states
-unsigned long startDialogMillis;
-const int dialogWaitTime = 5000; // how long to hold down fire for a dialog to play
-const int warnWaitTime = 10000;  // how long to hold down fire before warning sounds
+// timer trigger times/states
+unsigned long firingStateMillis;
+const int firingWarmWaitTime = 5000;  // how long to hold down fire for lights to speed up
+const int firingWarnWaitTime = 10000;  // how long to hold down fire before warning sounds
 
 // Arduino setup function
 void setup() {  
@@ -117,16 +117,17 @@ void setup() {
 
   // configure nose jewel
   noseJewel.begin();
-  powerStick.setBrightness(80);
+  noseJewel.setBrightness(50);
   noseJewel.show(); // Initialize all pixels to 'off'
 
   // configure powercell/cyclotron
   powerStick.begin();
-  powerStick.setBrightness(20);
+  powerStick.setBrightness(10);
   powerStick.show(); // Initialize all pixels to 'off'
 
+  // configure wand lights
   wandLights.begin();
-  wandLights.setBrightness(40);
+  wandLights.setBrightness(10);
   wandLights.show();
 
   // set the modes for the switches/buttons
@@ -158,32 +159,45 @@ void playTrack(String trackname) {
   }
 }
 
-int getRandomTrack(){
-  if ( !dialogQueue.isEmpty() ){
-    // pull the next dialog
-    return dialogQueue.dequeue();
-  }else{
-    randomSeed(micros() +  ss.read());
+void playDialogTrack(){
+  // if the queue is empty reseed it
+  if ( dialogQueue.isEmpty() ){
+    for (int i=1; i<=numDialog; i++){
+      dialogQueue.enqueue(i);
+    }
+  }
   
-    for (int i=0; i<numDialog; i++){
-      int pos = random(numDialog);
-      int t = dialogArray[i];   
-      dialogArray[i] = dialogArray[pos];
-      dialogArray[pos] = t;
-    }
-
-    for (int i=0; i<numDialog; i++){
-      dialogQueue.enqueue(dialogArray[i]);
-    }
-
-    return dialogQueue.dequeue();
+  switch (dialogQueue.dequeue()){
+    case (1):
+      playTrack(texTrack);
+      break;
+    case (2):
+      playTrack(listenTrack);
+      break;
+    case (3):
+      playTrack(choreTrack);
+      break;
+    case (4):
+      playTrack(boxTrack);
+      break;
+    case (6):
+      playTrack(thatTrack);
+      break;
+    case (8):
+      playTrack(neutronizedTrack);
+      break;
+    case (9):
+      playTrack(toolsTrack);
+      break;
+    default: 
+      playTrack(endTrack);
+      break;
   }
 }
 
 /* ************* Main Loop ************* */
-// helper function to set light states for the cyclotron
 int cyclotronRunningFadeOut = 255;  // we reset this variable every time we change the cyclotron index so the fade effect works
-int cyclotronRunningFadeIn = 0;  // we reset this variable every time we change the cyclotron index so the fade effect works
+int cyclotronRunningFadeIn = 0;     // we reset this to 0 to fade the cyclotron in from nothing
 
 // intervals that can be adjusted in real time to speed up animations 
 int pwr_interval = 60;        // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
@@ -222,21 +236,23 @@ void loop() {
     if (playing == 1 && startup == true) {
       playTrack(idleTrack);
     }
-
+    
     // choose the right powercell animation sequence for booted/on
     if ( powerBooted == true ) {
+      // standard idle power sequence for the pack
       poweredDown = false;
       shuttingDown = false;
-      powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
-      setWandLightState(3, 0, 0);               //set sloblow red
       venting = false;
+      setWandLightState(3, 0, 0); //set sloblow red
       setVentLightState(ventStart, ventEnd, 2);
+      powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
     } else {
-      setWandLightState(3, 7, currentMillis);   //set sloblow red blinking
+      // boot up the pack. powerSequenceBoot will set powerBooted when complete
       powerSequenceBoot(currentMillis);
+      setWandLightState(3, 7, currentMillis);   //set sloblow red blinking
     }
 
-    // if we are not started up we should play the startup sound first
+    // if we are not started up we should play the startup sound and begin the boot sequence
     if (startup == false) {
       startup = true;
       playTrack(startupTrack);
@@ -246,7 +262,7 @@ void loop() {
         safety = true;
       }
     }
-
+    
     if( startup == true && safety_switch == 1 ){
       if( venting == false && powerBooted == true ){
         setWandLightState(1, 2, 0);    //  set back light orange
@@ -255,73 +271,62 @@ void loop() {
         setWandLightState(1, 4, 0);    //  set back light off
         setWandLightState(2, 4, 0);    //  set body led off
       }
-    }
-    
-    // if the safety switch is set off then we can fire when the button is pressed
-    if ( safety_switch == 1 && fire_button == 0) {
-      // if the button is just pressed we clear all led's to start the firing animations
-      if ( isFiring == false ) {
-        shutdown_leds();
-        isFiring = true;
-      }
 
-      // show the firing bargraph sequence
-      barGraphSequenceTwo(currentMillis);
-    } else { // if we were firing and are no longer reset the leds
-      if ( isFiring == true ) {
-        shutdown_leds();
-        isFiring = false;
-      }
+      // if the safety switch is set off then we can fire when the button is pressed
+      if ( fire_button == 0) {
+        // if the button is just pressed we clear all led's to start the firing animations
+        if ( isFiring == false ) {
+          shutdown_leds();
+          isFiring = true;
+        }
+  
+        // show the firing bargraph sequence
+        barGraphSequenceTwo(currentMillis);
 
-      // and do the standard bargraph sequence
-      barGraphSequenceOne(currentMillis);
-    }
+        // strobe the nose pixels
+        fireStrobe(currentMillis); 
 
-    // if we are started up fire loop
-    if (startup == true && safety_switch == 1)
-    {
-      // if the safety was just changed play the click track
-      if (safety == false) {
-        safety = true;
-        playTrack(chargeTrack);
-      }
-
-      // if the fire button is pressed
-      if (fire_button == 0) {
-        fireStrobe(currentMillis); // strobe the nose pixels
-
+        // now powercell/cyclotron/wand lights
         // if this is the first time reset some variables and play the blast track
         if (fire == false) {
           shouldWarn = false;
           fire = true;
-          startDialogMillis = millis();
+          firingStateMillis = millis();
           playTrack(blastTrack);
         } else {
           // find out what our timing is
-          long diff = millis() - startDialogMillis;
-          // if we are in the warn interval
-          if ( diff > warnWaitTime) {
-            pwr_interval = 10;    // speed up the powercell animation
-            firing_interval = 20; // speed up the bar graph animation
-            cyc_interval = 50;    // really speed up cyclotron
-            cyc_fade_interval = 5;
+          long diff = millis() - firingStateMillis;
+          
+          if ( diff > firingWarnWaitTime) { // if we are in the fire warn interval
+            pwr_interval = 10;      // speed up the powercell animation
+            firing_interval = 20;   // speed up the bar graph animation
+            cyc_interval = 50;      // really speed up cyclotron
+            cyc_fade_interval = 5;  // speed up the fade of the cyclotron
             if (playing == 1 || shouldWarn == false ) {
               shouldWarn = true;
               playTrack(warnTrack); // play the firing track with the warning
             }
-            setWandLightState(0, 8, currentMillis);    // set top light red flashing
-          } else if ( diff > dialogWaitTime) { // if we are in the dialog playing interval
-            pwr_interval = 30;    // speed up the powercell animation
-            firing_interval = 30; // speed up the bar graph animation
-            cyc_interval = 200;   // speed up cyclotron
-            cyc_fade_interval = 10;
+            setWandLightState(0, 8, currentMillis);    // set top light red flashing fast
+          } else if ( diff > firingWarmWaitTime) { // if we are in the dialog playing interval
+            pwr_interval = 30;      // speed up the powercell animation
+            firing_interval = 30;   // speed up the bar graph animation
+            cyc_interval = 200;     // speed up cyclotron
+            cyc_fade_interval = 10; // speed up the fade of the cyclotron
             if (playing == 1) {
               playTrack(blastTrack); // play the normal blast track
             }
             setWandLightState(0, 6, currentMillis);    // set top light orange flashing
           }
         }
-      } else { // now the button is no longer pressed
+      } else { // if we were firing and are no longer reset the leds
+        if ( isFiring == true ) {
+          shutdown_leds();
+          isFiring = false;
+        }
+  
+        // and do the standard bargraph sequence
+        barGraphSequenceOne(currentMillis);
+
         if (fire == true) { // if we were firing let's reset the animations and play the correct final firing track
           clearFireStrobe();
           setWandLightState(0, 4, currentMillis);    // set top light off
@@ -333,44 +338,15 @@ void loop() {
           fire = false;
 
           // see if we've been firing long enough to get the dialog or vent sounds
-          long diff = millis() - startDialogMillis;
+          long diff = millis() - firingStateMillis;
 
-          if ( diff > warnWaitTime) { // if we are past the warning let's vent the pack
+          if ( diff > firingWarnWaitTime) { // if we are past the warning let's vent the pack
             playTrack(ventTrack);
             venting = true;
             clearPowerStrip(); // play the boot animation on the powercell
-          } else if ( diff > dialogWaitTime) { // if in the dialog time play the dialog in sequence
+          } else if ( diff > firingWarmWaitTime) { // if in the dialog time play the dialog in sequence
             if( useDialogTracks == true ){
-              switch (getRandomTrack())
-              {
-                case (1):
-                  playTrack(choreTrack);
-                  break;
-                case (2):
-                  playTrack(toolsTrack);
-                  break;
-                case (3):
-                  playTrack(texTrack);
-                  break;
-                case (4):
-                  playTrack(listenTrack);
-                  break;
-                case (5):
-                  playTrack(goodTrack);
-                  break;
-                case (6):
-                  playTrack(thatTrack);
-                  break;
-                case (8):
-                  playTrack(neutronizedTrack);
-                  break;
-                case (9):
-                  playTrack(boxTrack);
-                  break;
-                default: 
-                  playTrack(endTrack);
-                  break;
-              }
+              playDialogTrack();
             }else{
               playTrack(endTrack);
             }
@@ -380,11 +356,17 @@ void loop() {
           }
         }
       }
+
+      // if the safety was just changed play the click track
+      if (safety == false) {
+        safety = true;
+        playTrack(chargeTrack);
+      }
     } else {
       // if the safety is switched off play the click track
       if (safety == true) {
-        setWandLightState(1, 4, 0);    //  set back light off
-        setWandLightState(2, 4, 0);    //set body off
+        setWandLightState(1, 4, 0);    // set back light off
+        setWandLightState(2, 4, 0);    // set body off
         safety = false;
         playTrack(clickTrack);
       }
@@ -415,6 +397,7 @@ unsigned long prevFlashMillis = 0; // last time we changed a powercell light in 
 bool flashState = false;
 int wandFastFlashInterval = 100; // interval at which we flash the top led on the wand
 int wandMediumFlashInterval = 500; // interval at which we flash the top led on the wand
+
 void setWandLightState(int lednum, int state, int currentMillis){
   switch ( state ) {
     case 0: // set led red
@@ -523,8 +506,6 @@ unsigned long prevCycMillis = 0;        // last time we changed a cyclotron ligh
 unsigned long prevFadeCycMillis = 0;    // last time we changed a cyclotron light in the idle sequence
 
 // LED tracking variables
-const int powercellLedCount = 15;                                         // total number of led's in the animation
-const int powercellIndexOffset = 0;                                       // first led offset into the led chain for the animation
 const int powerSeqTotal = powercellLedCount;                              // total number of led's for powercell 0 based
 int powerSeqNum = powercellIndexOffset;                                   // current running powercell sequence led
 int powerShutdownSeqNum = powercellLedCount - powercellIndexOffset;       // shutdown sequence counts down
