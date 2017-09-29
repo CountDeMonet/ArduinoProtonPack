@@ -180,13 +180,13 @@ void playDialogTrack(){
     case (4):
       playTrack(boxTrack);
       break;
-    case (6):
+    case (5):
       playTrack(thatTrack);
       break;
-    case (8):
+    case (6):
       playTrack(neutronizedTrack);
       break;
-    case (9):
+    case (7):
       playTrack(toolsTrack);
       break;
     default: 
