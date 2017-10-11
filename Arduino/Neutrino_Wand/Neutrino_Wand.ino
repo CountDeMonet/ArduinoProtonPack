@@ -42,13 +42,13 @@ const int SAFETY_SWITCH = 7;
 const int FIRE_BUTTON = 8;
 
 // soundboard pins and setup
-#define SFX_RST 10
-#define SFX_RX 11
-#define SFX_TX 12
-const int ACT = 13;// this allows us to know if the audio is playing
+#define SFX_RST 9
+#define SFX_RX 10
+#define SFX_TX 11
+const int ACT = 12;    // this allows us to know if the audio is playing
 
 SoftwareSerial ss = SoftwareSerial(SFX_TX, SFX_RX);
-Adafruit_Soundboard sfx = Adafruit_Soundboard( & ss, NULL, SFX_RST);
+Adafruit_Soundboard sfx = Adafruit_Soundboard( &ss, NULL, SFX_RST);
 
 // ##############################
 // available options
@@ -102,7 +102,7 @@ const int firingWarmWaitTime = 5000;  // how long to hold down fire for lights t
 const int firingWarnWaitTime = 10000;  // how long to hold down fire before warning sounds
 
 // Arduino setup function
-void setup() {  
+void setup() {    
   // softwareserial at 9600 baud for the audio board
   ss.begin(9600);
 
@@ -117,17 +117,17 @@ void setup() {
 
   // configure nose jewel
   noseJewel.begin();
-  noseJewel.setBrightness(50);
+  noseJewel.setBrightness(100);
   noseJewel.show(); // Initialize all pixels to 'off'
 
   // configure powercell/cyclotron
   powerStick.begin();
-  powerStick.setBrightness(10);
+  powerStick.setBrightness(75);
   powerStick.show(); // Initialize all pixels to 'off'
 
   // configure wand lights
   wandLights.begin();
-  wandLights.setBrightness(10);
+  wandLights.setBrightness(75);
   wandLights.show();
 
   // set the modes for the switches/buttons
@@ -143,13 +143,12 @@ void setup() {
 
 /* ************* Audio Board Helper Functions ************* */
 // helper function to play a track by name on the audio board
-void playTrack(String trackname) {
+void playAudio( String trackname, int playing ) {
   // stop track if one is going
-  int playing = digitalRead(ACT);
   if (playing == 0) {
     sfx.stop();
   }
-
+  
   char charName[20];
   trackname.toCharArray(charName, 20);
   
@@ -159,7 +158,7 @@ void playTrack(String trackname) {
   }
 }
 
-void playDialogTrack(){
+void playDialogTrack( int playing ){
   // if the queue is empty reseed it
   if ( dialogQueue.isEmpty() ){
     for (int i=1; i<=numDialog; i++){
@@ -169,28 +168,28 @@ void playDialogTrack(){
   
   switch (dialogQueue.dequeue()){
     case (1):
-      playTrack(texTrack);
+      playAudio(texTrack, playing);
       break;
     case (2):
-      playTrack(listenTrack);
+      playAudio(listenTrack, playing);
       break;
     case (3):
-      playTrack(choreTrack);
+      playAudio(choreTrack, playing);
       break;
     case (4):
-      playTrack(boxTrack);
+      playAudio(boxTrack, playing);
       break;
     case (5):
-      playTrack(thatTrack);
+      playAudio(thatTrack, playing);
       break;
     case (6):
-      playTrack(neutronizedTrack);
+      playAudio(neutronizedTrack, playing);
       break;
     case (7):
-      playTrack(toolsTrack);
+      playAudio(toolsTrack, playing);
       break;
     default: 
-      playTrack(endTrack);
+      playAudio(endTrack, playing);
       break;
   }
 }
@@ -219,7 +218,7 @@ void loop() {
   // should play the full ghostbusters theme song
   if (theme_switch == 1) {
     if (theme == false) {
-      playTrack(themeTrack);
+      playAudio(themeTrack, playing);
       theme = true;
     }
   } else {
@@ -234,7 +233,7 @@ void loop() {
   if (startup_switch == 1) {   
     // in general we always try to play the idle sound if started
     if (playing == 1 && startup == true) {
-      playTrack(idleTrack);
+      playAudio(idleTrack, playing);
     }
     
     // choose the right powercell animation sequence for booted/on
@@ -255,7 +254,7 @@ void loop() {
     // if we are not started up we should play the startup sound and begin the boot sequence
     if (startup == false) {
       startup = true;
-      playTrack(startupTrack);
+      playAudio(startupTrack, playing);
 
       // get the current safety switch state
       if (safety_switch == 1 && safety == false) {
@@ -292,7 +291,7 @@ void loop() {
           shouldWarn = false;
           fire = true;
           firingStateMillis = millis();
-          playTrack(blastTrack);
+          playAudio(blastTrack, playing);
         } else {
           // find out what our timing is
           long diff = millis() - firingStateMillis;
@@ -304,7 +303,7 @@ void loop() {
             cyc_fade_interval = 5;  // speed up the fade of the cyclotron
             if (playing == 1 || shouldWarn == false ) {
               shouldWarn = true;
-              playTrack(warnTrack); // play the firing track with the warning
+              playAudio(warnTrack, playing); // play the firing track with the warning
             }
             setWandLightState(0, 8, currentMillis);    // set top light red flashing fast
           } else if ( diff > firingWarmWaitTime) { // if we are in the dialog playing interval
@@ -313,7 +312,7 @@ void loop() {
             cyc_interval = 200;     // speed up cyclotron
             cyc_fade_interval = 10; // speed up the fade of the cyclotron
             if (playing == 1) {
-              playTrack(blastTrack); // play the normal blast track
+              playAudio(blastTrack, playing); // play the normal blast track
             }
             setWandLightState(0, 6, currentMillis);    // set top light orange flashing
           }
@@ -341,18 +340,18 @@ void loop() {
           long diff = millis() - firingStateMillis;
 
           if ( diff > firingWarnWaitTime) { // if we are past the warning let's vent the pack
-            playTrack(ventTrack);
+            playAudio(ventTrack, playing);
             venting = true;
             clearPowerStrip(); // play the boot animation on the powercell
           } else if ( diff > firingWarmWaitTime) { // if in the dialog time play the dialog in sequence
             if( useDialogTracks == true ){
-              playDialogTrack();
+              playDialogTrack(playing);
             }else{
-              playTrack(endTrack);
+              playAudio(endTrack, playing);
             }
           } else {
             // otherwise play the standard power down track
-            playTrack(endTrack);
+            playAudio(endTrack, playing);
           }
         }
       }
@@ -360,7 +359,7 @@ void loop() {
       // if the safety was just changed play the click track
       if (safety == false) {
         safety = true;
-        playTrack(chargeTrack);
+        playAudio(chargeTrack, playing);
       }
     } else {
       // if the safety is switched off play the click track
@@ -368,13 +367,13 @@ void loop() {
         setWandLightState(1, 4, 0);    // set back light off
         setWandLightState(2, 4, 0);    // set body off
         safety = false;
-        playTrack(clickTrack);
+        playAudio(clickTrack, playing);
       }
     }
   } else { // if we are powering down
     if( poweredDown == false ){
       if( shuttingDown == false ){
-        playTrack(shutdownTrack); // play the pack shutdown track
+        playAudio(shutdownTrack, playing); // play the pack shutdown track
         shuttingDown = true;
       }
       cyclotronRunningFadeOut = 255;
@@ -492,10 +491,10 @@ void setVentLightState(int startLed, int endLed, int state ){
 /*************** Powercell/Cyclotron Animations *********************/
 // timer helpers and intervals for the animations
 unsigned long prevPwrBootMillis = 0;    // the last time we changed a powercell light in the boot sequence
-const int pwr_boot_interval = 41;       // interval at which to cycle lights (milliseconds).
+const int pwr_boot_interval = 60;       // interval at which to cycle lights (milliseconds). Adjust this if 
 
 unsigned long prevCycBootMillis = 0;    // the last time we changed a cyclotron light in the boot sequence
-const int cyc_boot_interval = 400;      // interval at which to cycle lights (milliseconds).
+const int cyc_boot_interval = 500;      // interval at which to cycle lights (milliseconds).
 const int cyc_boot_alt_interval = 600;      // interval at which to cycle lights (milliseconds).
 
 unsigned long prevShtdMillis = 0;       // last time we changed a light in the idle sequence
