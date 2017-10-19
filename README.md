@@ -21,7 +21,7 @@ This pack utilizes many off the shelf products for the electronics to make the b
 * two 8 neopixel light stick for the powercell. You can get 5 for $8.49 here: https://www.amazon.com/HiLetgo-5pcs-8-WS2812-Driver-Development/dp/B014F5VLN0
 * 4 toggle switches:https://www.amazon.com/gp/product/B00HGAKDIQ
 * 1 button:  https://www.amazon.com/gp/product/B01IU898QA
-* 11.1v lipo to power the whole thing: https://www.amazon.com/Gens-ace-Battery-2200mAh-Airplane
+* 11.1v lipo to power the whole thing: https://www.amazon.com/Gens-ace-Battery-2200mAh-Airplane/dp/B00WJN4LG0
 
 For the optional bargraph we are using the SparkFun SX1509 expander board and some resitor networks/bargraphs from digikey. If you want to use the bargraph you need to move the code from the test file into the main file and overwrite the stub functions. Since I won't be using it in my son's pack I removed it from the main file 
 https://learn.sparkfun.com/tutorials/sx1509-io-expander-breakout-hookup-guide
@@ -34,4 +34,4 @@ https://learn.sparkfun.com/tutorials/sx1509-io-expander-breakout-hookup-guide
 
 Here's a video of the whole shebang put together
 
-[![IMAGE ALT TEXT](http://img.youtube.com/vi/co1vqIO1l9s/0.jpg)](https://www.youtube.com/watch?v=co1vqIO1l9s "Ghostbusters Arduino Proton Pack Update")
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/ubUYNyutrw4/0.jpg)](https://www.youtube.com/watch?v=ubUYNyutrw4 "Ghostbusters Arduino Proton Pack Update")
