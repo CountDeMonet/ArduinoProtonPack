@@ -265,7 +265,7 @@ void loop() {
     if( startup == true && safety_switch == 1 ){
       if( venting == false && powerBooted == true ){
         setWandLightState(1, 2, 0);    //  set back light orange
-        setWandLightState(2, 3, 0);    //  set body led blue
+        setWandLightState(2, 1, 0);    //  set body led white
       }else{
         setWandLightState(1, 4, 0);    //  set back light off
         setWandLightState(2, 4, 0);    //  set body led off
@@ -350,8 +350,10 @@ void loop() {
               playAudio(endTrack, playing);
             }
           } else {
-            // otherwise play the standard power down track
-            playAudio(endTrack, playing);
+            // otherwise just shutdown the stream without the powerdown
+            if (playing == 0) {
+              sfx.stop();
+            }
           }
         }
       }
