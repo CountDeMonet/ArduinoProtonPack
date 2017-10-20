@@ -18,7 +18,7 @@ This pack utilizes many off the shelf products for the electronics to make the b
 * small speaker for my 83% scale build. You get 2 for $8.05. https://www.amazon.com/gp/product/B00NQ0LHNA
 * 4 neopixel jewels for the cyclotron @ 5.49 each: https://www.amazon.com/gp/product/B0105VMT4S
 * 1 neopixel jewels for the end of the wand @ 5.49 each: https://www.amazon.com/gp/product/B0105VMT4S
-* two 8 neopixel light stick for the powercell. You can get 5 for $8.49 here: https://www.amazon.com/HiLetgo-5pcs-8-WS2812-Driver-Development/dp/B014F5VLN0
+* two 8 neopixel light stick for the powercell @9.99 each: https://www.amazon.com/Adafruit-NeoPixel-Arduino-Integrated-Drivers/dp/B00IEDH26K
 * 4 toggle switches:https://www.amazon.com/gp/product/B00HGAKDIQ
 * 1 button:  https://www.amazon.com/gp/product/B01IU898QA
 * 11.1v lipo to power the whole thing: https://www.amazon.com/Gens-ace-Battery-2200mAh-Airplane/dp/B00WJN4LG0
