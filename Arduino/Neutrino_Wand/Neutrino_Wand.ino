@@ -86,10 +86,10 @@ const String texTrack =       "T09     WAV";
 const String choreTrack =     "T10     WAV";
 const String toolsTrack =     "T11     WAV";
 const String listenTrack =    "T12     WAV";
-const String thatTrack =      "T14     WAV";
-const String neutronizedTrack="T17     WAV";
-const String boxTrack =       "T18     WAV";
-const String themeTrack =     "T19     OGG";
+const String thatTrack =      "T13     WAV";
+const String neutronizedTrack="T14     WAV";
+const String boxTrack =       "T15     WAV";
+const String themeTrack =     "T16     OGG";
 
 // this queue holds a shuffled list of dialog tracks we can pull from so we don't
 // play the same ones twice
@@ -350,10 +350,7 @@ void loop() {
               playAudio(endTrack, playing);
             }
           } else {
-            // otherwise just shutdown the stream without the powerdown
-            if (playing == 0) {
-              sfx.stop();
-            }
+            playAudio(endTrack, playing);
           }
         }
       }
