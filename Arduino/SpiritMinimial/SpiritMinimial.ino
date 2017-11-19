@@ -12,8 +12,22 @@ bool powerBooted = false;   // has the pack booted up
 // ##############################
 // available options
 // ##############################
-const bool useGameCyclotronEffect = true; // set this to true to get the fading previous cyclotron light in the idle sequence
-const bool useCyclotronFadeInEffect = false; // Instead of the yellow alternate flashing on boot/vent this fades the cyclotron in from off to red
+const bool useGameCyclotronEffect = true;     // set this to true to get the fading previous cyclotron light in the idle sequence
+const bool useCyclotronFadeInEffect = true;   // Instead of the yellow alternate flashing on boot this fades the cyclotron in from off to red
+
+// ##############################
+// bootup animation speeds
+// ##############################
+const int pwr_boot_interval = 30;       // How fast to do the powercell drop animation on bootup 
+const int cyc_boot_interval = 400;      // If useCyclotronFadeInEffect is false this alternates the cycltron lights yellow 
+const int cyc_boot_alt_interval = 100;  // How fast to fade in the cyclotron lights from black to red on bootup
+
+// ##############################
+// idle animation speeds
+// ##############################
+const int pwr_interval = 50;            // how fast the powercell cycles
+const int cyc_interval = 750;           // how fast the cycltron cycles from one cell to the next
+const int cyc_fade_interval = 1;        // if useGameCyclotronEffect is true this is how fast to fade the previous cyclotron to light to nothing
 
 void setup() {
   // configure powercell/cyclotron
@@ -26,22 +40,19 @@ void setup() {
   cyclotron.show(); // Initialize all pixels to 'off'
 }
 
-int pwr_interval = 60;       // interval at which to cycle lights for the powercell.
-int cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
-int cyc_fade_interval = 1;   // fade the inactive cyclotron to light to nothing
-
 void loop() {
   // get the current time
   int currentMillis = millis();
   if( powerBooted == false ){
-	powerSequenceBoot(currentMillis);
+    powerSequenceBoot(currentMillis);
   } else {
-	powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
+    powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
   }
   delay(1);
 }
 
-int cyclotronRunningFadeOut = 255;
+int cyclotronRunningFadeOut = 255;  // we reset this variable every time we change the cyclotron index so the fade effect works
+int cyclotronRunningFadeIn = 0;     // we reset this to 0 to fade the cyclotron in from nothing
 void setCyclotronLightState(int startLed, int endLed, int state ){
   switch ( state ) {
     case 0: // set all leds to red
@@ -69,13 +80,13 @@ void setCyclotronLightState(int startLed, int endLed, int state ){
         }
       }
       break;
-	case 4: // fade all leds to red
+  case 4: // fade all leds to red
       for(int i=startLed; i <= endLed; i++) {
         if( cyclotronRunningFadeIn < 255 ){
-          powerStick.setPixelColor(i, 255 * cyclotronRunningFadeIn/255, 0, 0);
+          cyclotron.setPixelColor(i, 255 * cyclotronRunningFadeIn/255, 0, 0);
           cyclotronRunningFadeIn++;
         }else{
-          powerStick.setPixelColor(i, powerStick.Color(255, 0, 0));
+          cyclotron.setPixelColor(i, cyclotron.Color(255, 0, 0));
         }
       }
       break;
@@ -95,13 +106,15 @@ int c3End = 2;
 int c4Start = 3;
 int c4End = 3;
 
+unsigned long prevPwrBootMillis = 0;    // the last time we changed a powercell light in the boot sequence
+unsigned long prevCycBootMillis = 0;    // the last time we changed a cyclotron light in the boot sequence
 unsigned long prevPwrMillis = 0;        // last time we changed a powercell light in the idle sequence
 unsigned long prevCycMillis = 0;        // last time we changed a cyclotron light in the idle sequence
 unsigned long prevFadeCycMillis = 0;    // last time we changed a fading cyclotron light in the idle sequence
 
 // LED indexes into the neopixel powerstick chain for the cyclotron
-const int powercellLedCount = 14; 	// total number of led's in the animation
-int powerSeqNum = 0;          		// current running powercell sequence leds
+const int powercellLedCount = 14;   // total number of led's in the animation
+int powerSeqNum = 0;                // current running powercell sequence leds
 
 // animation level trackers for the boot and shutdown
 int currentBootLevel = 0;                          // current powercell boot level sequence led
@@ -111,6 +124,7 @@ int currentLightLevel = powercellLedCount;         // current powercell boot lig
 bool reverseBootCyclotron = false;
 void powerSequenceBoot(int currentMillis) {
   bool doUpdate = false;
+  bool doCycUpdate = false;
 
   // START CYCLOTRON
   if( useCyclotronFadeInEffect == false ){
@@ -123,7 +137,7 @@ void powerSequenceBoot(int currentMillis) {
         setCyclotronLightState(c3Start, c3End, 1);
         setCyclotronLightState(c4Start, c4End, 2);
         
-        doUpdate = true;
+        doCycUpdate = true;
         reverseBootCyclotron = true;
       }else{
         setCyclotronLightState(c1Start, c1End, 2);
@@ -131,7 +145,7 @@ void powerSequenceBoot(int currentMillis) {
         setCyclotronLightState(c3Start, c3End, 2);
         setCyclotronLightState(c4Start, c4End, 1);
         
-        doUpdate = true;
+        doCycUpdate = true;
         reverseBootCyclotron = false;
       }
     }
@@ -139,8 +153,12 @@ void powerSequenceBoot(int currentMillis) {
     if (currentMillis - prevCycBootMillis > cyc_boot_alt_interval) {
       prevCycBootMillis = currentMillis;
       setCyclotronLightState(c1Start, c4End, 4);
-      doUpdate = true;
+      doCycUpdate = true;
     }
+  }
+
+  if( doCycUpdate == true ){
+    cyclotron.show(); // send to the neopixels
   }
   // END CYCLOTRON
   
@@ -329,4 +347,5 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
     powerStick.show();
   }
 }
+
 
