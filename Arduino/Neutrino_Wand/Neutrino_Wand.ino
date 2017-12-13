@@ -73,23 +73,23 @@ bool fire = false;
 bool warning = false;
 
 // audio track names on soundboard
-const String startupTrack =   "T00     WAV";
-const String blastTrack =     "T01     WAV";
-const String endTrack =       "T02     WAV";
-const String idleTrack =      "T03     WAV";
-const String shutdownTrack =  "T04     WAV";
-const String clickTrack =     "T05     WAV";
-const String chargeTrack =    "T06     WAV";
-const String warnTrack =      "T07     WAV";
-const String ventTrack =      "T08     WAV";
-const String texTrack =       "T09     WAV";
-const String choreTrack =     "T10     WAV";
-const String toolsTrack =     "T11     WAV";
-const String listenTrack =    "T12     WAV";
-const String thatTrack =      "T13     WAV";
-const String neutronizedTrack="T14     WAV";
-const String boxTrack =       "T15     WAV";
-const String themeTrack =     "T16     OGG";
+char startupTrack[] =   "T00     WAV";
+char blastTrack[] =     "T01     WAV";
+char endTrack[] =       "T02     WAV";
+char idleTrack[] =      "T03     WAV";
+char shutdownTrack[] =  "T04     WAV";
+char clickTrack[] =     "T05     WAV";
+char chargeTrack[] =    "T06     WAV";
+char warnTrack[] =      "T07     WAV";
+char ventTrack[] =      "T08     WAV";
+char texTrack[] =       "T09     WAV";
+char choreTrack[] =     "T10     WAV";
+char toolsTrack[] =     "T11     WAV";
+char listenTrack[] =    "T12     WAV";
+char thatTrack[] =      "T13     WAV";
+char neutronizedTrack[]="T14     WAV";
+char boxTrack[] =       "T15     WAV";
+char themeTrack[] =     "T16     OGG";
 
 // this queue holds a shuffled list of dialog tracks we can pull from so we don't
 // play the same ones twice
@@ -143,17 +143,14 @@ void setup() {
 
 /* ************* Audio Board Helper Functions ************* */
 // helper function to play a track by name on the audio board
-void playAudio( String trackname, int playing ) {
+void playAudio( char* trackname, int playing ) {
   // stop track if one is going
   if (playing == 0) {
     sfx.stop();
   }
-  
-  char charName[20];
-  trackname.toCharArray(charName, 20);
-  
+    
   // now go play
-  if (sfx.playTrack(charName)) {
+  if (sfx.playTrack(trackname)) {
     sfx.unpause();
   }
 }
@@ -393,8 +390,8 @@ void loop() {
 /*************** Wand Light Helpers *********************/
 unsigned long prevFlashMillis = 0; // last time we changed a powercell light in the idle sequence
 bool flashState = false;
-int wandFastFlashInterval = 100; // interval at which we flash the top led on the wand
-int wandMediumFlashInterval = 500; // interval at which we flash the top led on the wand
+const int wandFastFlashInterval = 100; // interval at which we flash the top led on the wand
+const int wandMediumFlashInterval = 500; // interval at which we flash the top led on the wand
 
 void setWandLightState(int lednum, int state, int currentMillis){
   switch ( state ) {
