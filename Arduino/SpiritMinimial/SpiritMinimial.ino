@@ -13,21 +13,21 @@ bool powerBooted = false;   // has the pack booted up
 // available options
 // ##############################
 const bool useGameCyclotronEffect = true;     // set this to true to get the fading previous cyclotron light in the idle sequence
-const bool useCyclotronFadeInEffect = true;   // Instead of the yellow alternate flashing on boot this fades the cyclotron in from off to red
+const bool useCyclotronFadeInEffect = false;   // Instead of the yellow alternate flashing on boot this fades the cyclotron in from off to red
 
 // ##############################
 // bootup animation speeds
 // ##############################
-const int pwr_boot_interval = 30;       // How fast to do the powercell drop animation on bootup 
-const int cyc_boot_interval = 400;      // If useCyclotronFadeInEffect is false this alternates the cycltron lights yellow 
-const int cyc_boot_alt_interval = 100;  // How fast to fade in the cyclotron lights from black to red on bootup
+const unsigned long pwr_boot_interval = 40;       // How fast to do the powercell drop animation on bootup 
+const unsigned long cyc_boot_interval = 400;      // If useCyclotronFadeInEffect is false this alternates the cycltron lights yellow 
+const unsigned long cyc_boot_alt_interval = 100;  // How fast to fade in the cyclotron lights from black to red on bootup
 
 // ##############################
 // idle animation speeds
 // ##############################
-const int pwr_interval = 50;            // how fast the powercell cycles
-const int cyc_interval = 750;           // how fast the cycltron cycles from one cell to the next
-const int cyc_fade_interval = 1;        // if useGameCyclotronEffect is true this is how fast to fade the previous cyclotron to light to nothing
+const unsigned long pwr_interval = 50;            // how fast the powercell cycles
+const unsigned long cyc_interval = 750;           // how fast the cycltron cycles from one cell to the next
+const unsigned long cyc_fade_interval = 1;        // if useGameCyclotronEffect is true this is how fast to fade the previous cyclotron to light to nothing
 
 void setup() {
   // configure powercell/cyclotron
@@ -42,7 +42,7 @@ void setup() {
 
 void loop() {
   // get the current time
-  int currentMillis = millis();
+  unsigned long currentMillis = millis();
   if( powerBooted == false ){
     powerSequenceBoot(currentMillis);
   } else {
@@ -122,13 +122,13 @@ int currentLightLevel = powercellLedCount;         // current powercell boot lig
 
 // boot animation on the powercell/cyclotron
 bool reverseBootCyclotron = false;
-void powerSequenceBoot(int currentMillis) {
+void powerSequenceBoot(unsigned long currentMillis) {
   bool doUpdate = false;
   bool doCycUpdate = false;
 
   // START CYCLOTRON
   if( useCyclotronFadeInEffect == false ){
-    if (currentMillis - prevCycBootMillis > cyc_boot_interval) {
+    if ((unsigned long)(currentMillis - prevCycBootMillis) >= cyc_boot_interval) {
       prevCycBootMillis = currentMillis;
 
       if( reverseBootCyclotron == false ){
@@ -150,7 +150,7 @@ void powerSequenceBoot(int currentMillis) {
       }
     }
   }else{
-    if (currentMillis - prevCycBootMillis > cyc_boot_alt_interval) {
+    if ((unsigned long)(currentMillis - prevCycBootMillis) >= cyc_boot_alt_interval) {
       prevCycBootMillis = currentMillis;
       setCyclotronLightState(c1Start, c4End, 4);
       doCycUpdate = true;
@@ -162,7 +162,7 @@ void powerSequenceBoot(int currentMillis) {
   }
   // END CYCLOTRON
   
-  if (currentMillis - prevPwrBootMillis > pwr_boot_interval) {
+  if ((unsigned long)(currentMillis - prevPwrBootMillis) >= pwr_boot_interval) {
     // save the last time you blinked the LED
     prevPwrBootMillis = currentMillis;
 
@@ -201,14 +201,14 @@ int cycOrder = 0;
 int cycFading = -1;
 
 // normal animation on the bar graph
-void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfadespeed) {
+void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsigned long cycspeed, unsigned long cycfadespeed) {
   bool doUpdate = false;
   bool doCycUpdate = false;
   
   // START CYCLOTRON 
   if( useGameCyclotronEffect == true ){
     // figure out main light
-    if (currentMillis - prevCycMillis > cycspeed) {
+    if ((unsigned long)(currentMillis - prevCycMillis) >= cycspeed) {
       prevCycMillis = currentMillis;
       
       switch ( cycOrder ) {
@@ -254,7 +254,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
     }
   
     // now figure out the fading light
-    if( currentMillis - prevFadeCycMillis > cycfadespeed ){
+    if( (unsigned long)(currentMillis - prevFadeCycMillis) >= cycfadespeed ){
       prevFadeCycMillis = currentMillis;
       if( cycFading != -1 ){
         switch ( cycFading ) {
@@ -276,7 +276,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
     }
   }else{
     // figure out main light
-    if (currentMillis - prevCycMillis > cycspeed) {
+    if ((unsigned long)(currentMillis - prevCycMillis) >= cycspeed) {
       prevCycMillis = currentMillis;
       
       switch ( cycOrder ) {
@@ -320,7 +320,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
   // END CYCLOTRON
   
   // START POWERCELL
-  if (currentMillis - prevPwrMillis > anispeed) {
+  if ((unsigned long)(currentMillis - prevPwrMillis) >= anispeed) {
     // save the last time you blinked the LED
     prevPwrMillis = currentMillis;
 
