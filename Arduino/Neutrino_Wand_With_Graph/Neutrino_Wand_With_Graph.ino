@@ -3,6 +3,16 @@
 #include <Wire.h> // Include the I2C library (required)
 #include <SparkFunSX1509.h> // Include SX1509 library
 
+// for the sound board
+#include <SoftwareSerial.h>
+#include "Adafruit_Soundboard.h"
+
+#include <Adafruit_NeoPixel.h>
+
+// for led triggers
+#define HIGH 0x1
+#define LOW  0x0
+
 // SX1509 I2C address (set by ADDR1 and ADDR0 (00 by default):
 const byte SX1509_ADDRESS = 0x3E;  // SX1509 I2C address
 SX1509 io; // Create an SX1509 object to be used throughout
@@ -27,16 +37,6 @@ const byte SX1509_BAR_12 = 11;
 const byte SX1509_BAR_13 = 12;
 const byte SX1509_BAR_14 = 13;
 const byte SX1509_BAR_15 = 14;
-
-// for the sound board
-#include <SoftwareSerial.h>
-#include "Adafruit_Soundboard.h"
-
-#include <Adafruit_NeoPixel.h>
-
-// for led triggers
-#define HIGH 0x1
-#define LOW  0x0
 
 // neopixel pins / setup
 #define NEO_POWER 2 // for cyclotron and powercell
@@ -126,8 +126,8 @@ int numDialog = 7;
 
 // timer trigger times/states
 unsigned long firingStateMillis;
-const int firingWarmWaitTime = 5000;  // how long to hold down fire for lights to speed up
-const int firingWarnWaitTime = 10000;  // how long to hold down fire before warning sounds
+const unsigned long firingWarmWaitTime = 5000;  // how long to hold down fire for lights to speed up
+const unsigned long firingWarnWaitTime = 10000;  // how long to hold down fire before warning sounds
 
 // Arduino setup function
 void setup() {    
@@ -167,8 +167,8 @@ void setup() {
   digitalWrite(SAFETY_SWITCH, HIGH);
   pinMode(FIRE_BUTTON, INPUT);
   digitalWrite(FIRE_BUTTON, HIGH);
-  
-  // Call io.begin(<address>) to initialize the SX1509. If it
+
+    // Call io.begin(<address>) to initialize the SX1509. If it
   // successfully communicates, it'll return 1.
   if (!io.begin(SX1509_ADDRESS)) {
     while (1) ; // If we fail to communicate, loop forever for now but it would be nice to warn the user somehow
@@ -250,14 +250,14 @@ int cyclotronRunningFadeOut = 255;  // we reset this variable every time we chan
 int cyclotronRunningFadeIn = 0;     // we reset this to 0 to fade the cyclotron in from nothing
 
 // intervals that can be adjusted in real time to speed up animations 
-int pwr_interval = 60;        // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
-int cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
-int cyc_fade_interval = 15;   // fade the inactive cyclotron to light to nothing
-int firing_interval = 40;     // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
+unsigned long pwr_interval = 60;        // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
+unsigned long cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
+unsigned long cyc_fade_interval = 15;   // fade the inactive cyclotron to light to nothing
+unsigned long firing_interval = 40;     // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
 
 void loop() {
   // get the current time
-  int currentMillis = millis();
+  unsigned long currentMillis = millis();
 
   // find out of the audio board is playing audio
   int playing = digitalRead(ACT);
@@ -345,7 +345,7 @@ void loop() {
           playAudio(blastTrack, playing);
         } else {
           // find out what our timing is
-          long diff = millis() - firingStateMillis;
+          unsigned long diff = (unsigned long)(millis() - firingStateMillis);
           
           if ( diff > firingWarnWaitTime) { // if we are in the fire warn interval
             pwr_interval = 10;      // speed up the powercell animation
@@ -388,7 +388,7 @@ void loop() {
           fire = false;
 
           // see if we've been firing long enough to get the dialog or vent sounds
-          long diff = millis() - firingStateMillis;
+          unsigned long diff = (unsigned long)(millis() - firingStateMillis);
 
           if ( diff > firingWarnWaitTime) { // if we are past the warning let's vent the pack
             playAudio(ventTrack, playing);
@@ -444,10 +444,10 @@ void loop() {
 /*************** Wand Light Helpers *********************/
 unsigned long prevFlashMillis = 0; // last time we changed a powercell light in the idle sequence
 bool flashState = false;
-const int wandFastFlashInterval = 100; // interval at which we flash the top led on the wand
-const int wandMediumFlashInterval = 500; // interval at which we flash the top led on the wand
+const unsigned long wandFastFlashInterval = 100; // interval at which we flash the top led on the wand
+const unsigned long wandMediumFlashInterval = 500; // interval at which we flash the top led on the wand
 
-void setWandLightState(int lednum, int state, int currentMillis){
+void setWandLightState(int lednum, int state, unsigned long currentMillis){
   switch ( state ) {
     case 0: // set led red
       wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));
@@ -465,7 +465,7 @@ void setWandLightState(int lednum, int state, int currentMillis){
       wandLights.setPixelColor(lednum, 0);
       break;
     case 5: // fast white flashing    
-      if (currentMillis - prevFlashMillis > wandFastFlashInterval) {    
+      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandFastFlashInterval) {    
         prevFlashMillis = currentMillis;    
         if( flashState == false ){    
           wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));    
@@ -477,7 +477,7 @@ void setWandLightState(int lednum, int state, int currentMillis){
       }   
       break;
     case 6: // slower orange flashing    
-      if (currentMillis - prevFlashMillis > wandMediumFlashInterval) {    
+      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandMediumFlashInterval) {    
         prevFlashMillis = currentMillis;    
         if( flashState == false ){    
           wandLights.setPixelColor(lednum, wandLights.Color(255, 127, 0));    
@@ -489,7 +489,7 @@ void setWandLightState(int lednum, int state, int currentMillis){
       }   
       break;
     case 7: // medium red flashing    
-      if (currentMillis - prevFlashMillis > wandMediumFlashInterval) {    
+      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandMediumFlashInterval) {    
         prevFlashMillis = currentMillis;    
         if( flashState == false ){    
           wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));    
@@ -501,7 +501,7 @@ void setWandLightState(int lednum, int state, int currentMillis){
       }   
       break;
     case 8: // fast red flashing    
-      if (currentMillis - prevFlashMillis > wandFastFlashInterval) {    
+      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandFastFlashInterval) {    
         prevFlashMillis = currentMillis;    
         if( flashState == false ){    
           wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));    
@@ -541,14 +541,14 @@ void setVentLightState(int startLed, int endLed, int state ){
 /*************** Powercell/Cyclotron Animations *********************/
 // timer helpers and intervals for the animations
 unsigned long prevPwrBootMillis = 0;    // the last time we changed a powercell light in the boot sequence
-const int pwr_boot_interval = 60;       // interval at which to cycle lights (milliseconds). Adjust this if 
+const unsigned long pwr_boot_interval = 60;       // interval at which to cycle lights (milliseconds). Adjust this if 
 
 unsigned long prevCycBootMillis = 0;    // the last time we changed a cyclotron light in the boot sequence
-const int cyc_boot_interval = 500;      // interval at which to cycle lights (milliseconds).
-const int cyc_boot_alt_interval = 600;      // interval at which to cycle lights (milliseconds).
+const unsigned long cyc_boot_interval = 500;      // interval at which to cycle lights (milliseconds).
+const unsigned long cyc_boot_alt_interval = 600;      // interval at which to cycle lights (milliseconds).
 
 unsigned long prevShtdMillis = 0;       // last time we changed a light in the idle sequence
-const int pwr_shutdown_interval = 200;  // interval at which to cycle lights (milliseconds).
+const unsigned long pwr_shutdown_interval = 200;  // interval at which to cycle lights (milliseconds).
 
 unsigned long prevPwrMillis = 0;        // last time we changed a powercell light in the idle sequence
 unsigned long prevCycMillis = 0;        // last time we changed a cyclotron light in the idle sequence
@@ -632,12 +632,12 @@ void clearPowerStrip() {
 
 // boot animation on the powercell/cyclotron
 bool reverseBootCyclotron = false;
-void powerSequenceBoot(int currentMillis) {
+void powerSequenceBoot(unsigned long currentMillis) {
   bool doUpdate = false;
 
   // START CYCLOTRON
   if( useCyclotronFadeInEffect == false ){
-    if (currentMillis - prevCycBootMillis > cyc_boot_interval) {
+    if ((unsigned long)(currentMillis - prevCycBootMillis) >= cyc_boot_interval) {
       prevCycBootMillis = currentMillis;
 
       if( reverseBootCyclotron == false ){
@@ -659,7 +659,7 @@ void powerSequenceBoot(int currentMillis) {
       }
     }
   }else{
-    if (currentMillis - prevCycBootMillis > cyc_boot_alt_interval) {
+    if ((unsigned long)(currentMillis - prevCycBootMillis) >= cyc_boot_alt_interval) {
       prevCycBootMillis = currentMillis;
       setCyclotronLightState(c1Start, c4End, 4);
       doUpdate = true;
@@ -667,7 +667,7 @@ void powerSequenceBoot(int currentMillis) {
   }
   // END CYCLOTRON
   
-  if (currentMillis - prevPwrBootMillis > pwr_boot_interval) {
+  if ((unsigned long)(currentMillis - prevPwrBootMillis) >= pwr_boot_interval) {
     // save the last time you blinked the LED
     prevPwrBootMillis = currentMillis;
 
@@ -705,12 +705,12 @@ void powerSequenceBoot(int currentMillis) {
 // idle/firing animation for the powercell/cyclotron
 int cycOrder = 0;     // which cyclotron led will be lit next
 int cycFading = -1;   // which cyclotron led is fading out for game style
-void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfadespeed) {
+void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsigned long cycspeed, unsigned long cycfadespeed) {
   bool doUpdate = false;  // keep track of if we changed something so we only update on changes
 
   // START CYCLOTRON 
   if( useGameCyclotronEffect == true ){ // if we are doing the video game style cyclotron
-    if (currentMillis - prevCycMillis > cycspeed) {
+    if ((unsigned long)(currentMillis - prevCycMillis) >= cycspeed) {
       prevCycMillis = currentMillis;
       
       switch ( cycOrder ) {
@@ -752,7 +752,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
     }
   
     // now figure out the fading light
-    if( currentMillis - prevFadeCycMillis > cycfadespeed ){
+    if( (unsigned long)( currentMillis - prevFadeCycMillis) >= cycfadespeed ){
       prevFadeCycMillis = currentMillis;
       if( cycFading != -1 ){
         switch ( cycFading ) {
@@ -773,7 +773,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
       }
     }
   }else{ // otherwise this is the standard version
-    if (currentMillis - prevCycMillis > cycspeed) {
+    if ((unsigned long)(currentMillis - prevCycMillis) >= cycspeed) {
       prevCycMillis = currentMillis;
       
       switch ( cycOrder ) {
@@ -821,7 +821,7 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
   // END CYCLOTRON
 
   // START POWERCELL
-  if (currentMillis - prevPwrMillis > anispeed) {
+  if ((unsigned long)(currentMillis - prevPwrMillis) >= anispeed) {
     // save the last time you blinked the LED
     prevPwrMillis = currentMillis;
 
@@ -851,8 +851,8 @@ void powerSequenceOne(int currentMillis, int anispeed, int cycspeed, int cycfade
 
 // shutdown animation for the powercell/cyclotron
 int cyclotronFadeOut = 255;
-void powerSequenceShutdown(int currentMillis) {
-  if (currentMillis - prevShtdMillis > pwr_shutdown_interval) {
+void powerSequenceShutdown(unsigned long currentMillis) {
+  if ((unsigned long)(currentMillis - prevShtdMillis) >= pwr_shutdown_interval) {
     prevShtdMillis = currentMillis;
 
     // START CYCLOTRON
@@ -890,7 +890,7 @@ void powerSequenceShutdown(int currentMillis) {
 
 /*************** Nose Jewel Firing Animations *********************/
 unsigned long prevFireMillis = 0;
-const int fire_interval = 50;     // interval at which to cycle lights (milliseconds).
+const unsigned long fire_interval = 50;     // interval at which to cycle lights (milliseconds).
 int fireSeqNum = 0;
 int fireSeqTotal = 5;
 
@@ -902,8 +902,8 @@ void clearFireStrobe() {
   fireSeqNum = 0;
 }
 
-void fireStrobe(int currentMillis) {
-  if (currentMillis - prevFireMillis > fire_interval) {
+void fireStrobe(unsigned long currentMillis) {
+  if ((unsigned long)(currentMillis - prevFireMillis) >= fire_interval) {
     prevFireMillis = currentMillis;
     
     switch ( fireSeqNum ) {
@@ -974,13 +974,13 @@ void fireStrobe(int currentMillis) {
 
 /*************** Bar Graph Animations *********************/
 // This is the idle sequence
-unsigned long prevBarMillis_on = 0;   // bargraph on tracker
-const int pwrcl_interval = 60;     // interval at which to cycle lights (milliseconds).
+unsigned long prevBarMillis_on = 0;          // bargraph on tracker
+const unsigned long pwrcl_interval = 60;     // interval at which to cycle lights (milliseconds).
 bool reverseSequenceOne = false;
 
-void barGraphSequenceOne(int currentMillis) {
+void barGraphSequenceOne(unsigned long currentMillis) {
   // normal sync animation on the bar graph
-  if (currentMillis - prevBarMillis_on > pwrcl_interval) {
+  if ((unsigned long)(currentMillis - prevBarMillis_on) > pwrcl_interval) {
     // save the last time you blinked the LED
     prevBarMillis_on = currentMillis;
 
@@ -1004,8 +1004,8 @@ void barGraphSequenceOne(int currentMillis) {
 unsigned long prevBarMillis_fire = 0; // bargraph firing tracker
 int fireSequenceNum = 1;
 
-void barGraphSequenceTwo(int currentMillis) {
-  if (currentMillis - prevBarMillis_fire > firing_interval) {
+void barGraphSequenceTwo(unsigned long currentMillis) {
+  if ((unsigned long)(currentMillis - prevBarMillis_fire) > firing_interval) {
     // save the last time you blinked the LED
     prevBarMillis_fire = currentMillis;
 
@@ -1159,5 +1159,4 @@ void switch_graph_led(int num, int state) {
       break;
   }
 }
-
 

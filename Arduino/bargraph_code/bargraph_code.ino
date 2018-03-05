@@ -54,7 +54,7 @@ void setup() {
   shutdown_leds();
 }
 
-long firing_interval = 40;    // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
+unsigned long firing_interval = 40;    // interval at which to cycle firing lights on the bargraph. We update this in the loop to speed up the animation so must be declared here (milliseconds).
 
 void loop() {
   // get the current time
@@ -64,13 +64,13 @@ void loop() {
 
 /*************** Bar Graph Animations *********************/
 // This is the idle sequence
-unsigned long prevBarMillis_on = 0;   // bargraph on tracker
-const int pwrcl_interval = 60;     // interval at which to cycle lights (milliseconds).
+unsigned long prevBarMillis_on = 0;          // bargraph on tracker
+const unsigned long pwrcl_interval = 60;     // interval at which to cycle lights (milliseconds).
 bool reverseSequenceOne = false;
 
-void barGraphSequenceOne(int currentMillis) {
+void barGraphSequenceOne(unsigned long currentMillis) {
   // normal sync animation on the bar graph
-  if (currentMillis - prevBarMillis_on > pwrcl_interval) {
+  if ((unsigned long)(currentMillis - prevBarMillis_on) > pwrcl_interval) {
     // save the last time you blinked the LED
     prevBarMillis_on = currentMillis;
 
@@ -94,8 +94,8 @@ void barGraphSequenceOne(int currentMillis) {
 unsigned long prevBarMillis_fire = 0; // bargraph firing tracker
 int fireSequenceNum = 1;
 
-void barGraphSequenceTwo(int currentMillis) {
-  if (currentMillis - prevBarMillis_fire > firing_interval) {
+void barGraphSequenceTwo(unsigned long currentMillis) {
+  if ((unsigned long)(currentMillis - prevBarMillis_fire) > firing_interval) {
     // save the last time you blinked the LED
     prevBarMillis_fire = currentMillis;
 
