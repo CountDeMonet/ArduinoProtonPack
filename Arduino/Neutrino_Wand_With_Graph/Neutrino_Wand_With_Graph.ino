@@ -70,10 +70,10 @@ const int SAFETY_SWITCH = 7;
 const int FIRE_BUTTON = 8;
 
 // soundboard pins and setup
-#define SFX_RST 10
-#define SFX_RX 11
-#define SFX_TX 12
-const int ACT = 13;    // this allows us to know if the audio is playing
+#define SFX_RST 9
+#define SFX_RX 10
+#define SFX_TX 11
+const int ACT = 12;    // this allows us to know if the audio is playing
 
 SoftwareSerial ss = SoftwareSerial(SFX_TX, SFX_RX);
 Adafruit_Soundboard sfx = Adafruit_Soundboard( &ss, NULL, SFX_RST);
