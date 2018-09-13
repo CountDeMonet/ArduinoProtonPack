@@ -13,20 +13,20 @@ bool powerBooted = false;   // has the pack booted up
 // available options
 // ##############################
 const bool useGameCyclotronEffect = true;     // set this to true to get the fading previous cyclotron light in the idle sequence
-const bool useCyclotronFadeInEffect = false;   // Instead of the yellow alternate flashing on boot this fades the cyclotron in from off to red
+const bool useCyclotronFadeInEffect = true;   // Instead of the yellow alternate flashing on boot this fades the cyclotron in from off to red
 
 // ##############################
 // bootup animation speeds
 // ##############################
 const unsigned long pwr_boot_interval = 40;       // How fast to do the powercell drop animation on bootup 
 const unsigned long cyc_boot_interval = 400;      // If useCyclotronFadeInEffect is false this alternates the cycltron lights yellow 
-const unsigned long cyc_boot_alt_interval = 100;  // How fast to fade in the cyclotron lights from black to red on bootup
+const unsigned long cyc_boot_alt_interval = 150;  // How fast to fade in the cyclotron lights from black to red on bootup
 
 // ##############################
 // idle animation speeds
 // ##############################
-const unsigned long pwr_interval = 50;            // how fast the powercell cycles
-const unsigned long cyc_interval = 750;           // how fast the cycltron cycles from one cell to the next
+const unsigned long pwr_interval = 55;            // how fast the powercell cycles: One 14 led cycle per 756 ms
+const unsigned long cyc_interval = 770;           // how fast the cycltron cycles from one cell to the next: One full rotation every 3024 ms
 const unsigned long cyc_fade_interval = 1;        // if useGameCyclotronEffect is true this is how fast to fade the previous cyclotron to light to nothing
 
 void setup() {
@@ -123,10 +123,44 @@ int currentLightLevel = powercellLedCount;         // current powercell boot lig
 // boot animation on the powercell/cyclotron
 bool reverseBootCyclotron = false;
 void powerSequenceBoot(unsigned long currentMillis) {
-  bool doUpdate = false;
-  bool doCycUpdate = false;
+  bool doPowercellUpdate = false;
 
+  if ((unsigned long)(currentMillis - prevPwrBootMillis) >= pwr_boot_interval) {
+    // save the last time you blinked the LED
+    prevPwrBootMillis = currentMillis;
+
+    // START POWERCELL
+    if( currentBootLevel != powercellLedCount ){
+      if( currentBootLevel == currentLightLevel){
+        if(currentLightLevel+1 <= powercellLedCount){
+          powerStick.setPixelColor(currentLightLevel+1, 0);
+        }
+        powerStick.setPixelColor(currentBootLevel, powerStick.Color(0, 0, 255));
+        currentLightLevel = powercellLedCount;
+        currentBootLevel++;
+      }else{
+        if(currentLightLevel+1 <= powercellLedCount){
+          powerStick.setPixelColor(currentLightLevel+1, 0);
+        }
+        powerStick.setPixelColor(currentLightLevel, powerStick.Color(0, 0, 255));
+        currentLightLevel--;
+      }
+      doPowercellUpdate = true;
+    }else{
+      powerBooted = true;
+      currentBootLevel = 0;
+      currentLightLevel = powercellLedCount;
+    }
+    // END POWERCELL
+  }
+
+  // if we have changed an led
+  if( doPowercellUpdate == true ){
+    powerStick.show(); // commit all of the changes
+  }
+  
   // START CYCLOTRON
+  bool doCycUpdate = false;
   if( useCyclotronFadeInEffect == false ){
     if ((unsigned long)(currentMillis - prevCycBootMillis) >= cyc_boot_interval) {
       prevCycBootMillis = currentMillis;
@@ -161,40 +195,6 @@ void powerSequenceBoot(unsigned long currentMillis) {
     cyclotron.show(); // send to the neopixels
   }
   // END CYCLOTRON
-  
-  if ((unsigned long)(currentMillis - prevPwrBootMillis) >= pwr_boot_interval) {
-    // save the last time you blinked the LED
-    prevPwrBootMillis = currentMillis;
-
-    // START POWERCELL
-    if( currentBootLevel != powercellLedCount ){
-      if( currentBootLevel == currentLightLevel){
-        if(currentLightLevel+1 <= powercellLedCount){
-          powerStick.setPixelColor(currentLightLevel+1, 0);
-        }
-        powerStick.setPixelColor(currentBootLevel, powerStick.Color(0, 0, 255));
-        currentLightLevel = powercellLedCount;
-        currentBootLevel++;
-      }else{
-        if(currentLightLevel+1 <= powercellLedCount){
-          powerStick.setPixelColor(currentLightLevel+1, 0);
-        }
-        powerStick.setPixelColor(currentLightLevel, powerStick.Color(0, 0, 255));
-        currentLightLevel--;
-      }
-      doUpdate = true;
-    }else{
-      powerBooted = true;
-      currentBootLevel = 0;
-      currentLightLevel = powercellLedCount;
-    }
-    // END POWERCELL
-  }
-
-  // if we have changed an led
-  if( doUpdate == true ){
-    powerStick.show(); // commit all of the changes
-  }
 }
 
 int cycOrder = 0;
@@ -202,10 +202,34 @@ int cycFading = -1;
 
 // normal animation on the bar graph
 void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsigned long cycspeed, unsigned long cycfadespeed) {
-  bool doUpdate = false;
-  bool doCycUpdate = false;
+  // START POWERCELL
+  bool doPowercellUpdate = false;
+  if ((unsigned long)(currentMillis - prevPwrMillis) >= anispeed) {
+    // save the last time you blinked the LED
+    prevPwrMillis = currentMillis;
+
+    for ( int i = 0; i <= powercellLedCount; i++) {
+      if ( i <= powerSeqNum ) {
+        powerStick.setPixelColor(i, powerStick.Color(0, 0, 150));
+      } else {
+        powerStick.setPixelColor(i, 0);
+      }
+    }
+    
+    if ( powerSeqNum <= powercellLedCount) {
+      powerSeqNum++;
+    } else {
+      powerSeqNum = 0;
+    }
+
+    // Update the leds
+    powerStick.show();
+  }
+  
+  // END POWERCELL
   
   // START CYCLOTRON 
+  bool doCycUpdate = false;
   if( useGameCyclotronEffect == true ){
     // figure out main light
     if ((unsigned long)(currentMillis - prevCycMillis) >= cycspeed) {
@@ -318,34 +342,4 @@ void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsig
     cyclotron.show(); // send to the neopixels
   }
   // END CYCLOTRON
-  
-  // START POWERCELL
-  if ((unsigned long)(currentMillis - prevPwrMillis) >= anispeed) {
-    // save the last time you blinked the LED
-    prevPwrMillis = currentMillis;
-
-    for ( int i = 0; i <= powercellLedCount; i++) {
-      if ( i <= powerSeqNum ) {
-        powerStick.setPixelColor(i, powerStick.Color(0, 0, 150));
-      } else {
-        powerStick.setPixelColor(i, 0);
-      }
-    }
-    
-    if ( powerSeqNum <= powercellLedCount) {
-      powerSeqNum++;
-    } else {
-      powerSeqNum = 0;
-    }
-
-    doUpdate = true;
-  }
-  // END POWERCELL
-
-  // if we changed anything update
-  if( doUpdate == true ){
-    powerStick.show();
-  }
 }
-
-
