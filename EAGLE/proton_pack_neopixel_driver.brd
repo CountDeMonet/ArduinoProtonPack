@@ -137,7 +137,7 @@
 <wire x1="40.31" y1="0.762" x2="40.31" y2="18.161" width="0" layer="20"/>
 <wire x1="40.31" y1="18.161" x2="0.762" y2="18.161" width="0" layer="20"/>
 <wire x1="0.762" y1="18.161" x2="0.762" y2="0.762" width="0" layer="20"/>
-<text x="12.7" y="8.89" size="1.524" layer="25" font="vector">Pack Lights V1</text>
+<text x="12.7" y="8.89" size="1.524" layer="24" font="vector">Pack Lights V1</text>
 </plain>
 <libraries>
 <library name="Rembrandt Electronics - JST XH Connectors v1-0">
