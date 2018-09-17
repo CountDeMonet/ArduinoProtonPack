@@ -19,6 +19,7 @@ This pack utilizes many off the shelf products for the electronics to make the b
 * 4 neopixel jewels for the cyclotron @ 5.49 each: https://www.amazon.com/gp/product/B0105VMT4S
 * 1 neopixel jewels for the end of the wand @ 5.49 each: https://www.amazon.com/gp/product/B0105VMT4S
 * two 8 neopixel light stick for the powercell @9.99 each: https://www.amazon.com/Adafruit-NeoPixel-Arduino-Integrated-Drivers/dp/B00IEDH26K
+* Individual neopixels for venting, wand lights, and for the cyclotron if doing the spirit version. 100 for $16: https://www.amazon.com/Kuman-WS2812B-Addressable-Arduino-littlergb/dp/B01M5BEO1C
 * 4 toggle switches:https://www.amazon.com/gp/product/B00HGAKDIQ
 * 1 button:  https://www.amazon.com/gp/product/B01IU898QA
 * 11.1v lipo to power the whole thing: https://www.amazon.com/Gens-ace-Battery-2200mAh-Airplane/dp/B00WJN4LG0
