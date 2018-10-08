@@ -24,6 +24,13 @@ This pack utilizes many off the shelf products for the electronics to make the b
 * 1 button:  https://www.amazon.com/gp/product/B01IU898QA
 * 11.1v lipo to power the whole thing: https://www.amazon.com/Gens-ace-Battery-2200mAh-Airplane/dp/B00WJN4LG0
 
+I bought the light covers from digikey
+
+https://www.digikey.com/product-detail/en/visual-communications-company-vcc/CLF_280_ATP/CLF_280_ATP-ND/4515437 - light near the clippard
+https://www.digikey.com/product-detail/en/visual-communications-company-vcc/SMB_200_RTP/SMB_200_RTP-ND/4515614 - sloblo
+https://www.digikey.com/product-detail/en/visual-communications-company-vcc/SML_190_CTP/SML_190_CTP-ND/4515623 - Vent light front
+https://www.digikey.com/product-detail/en/visual-communications-company-vcc/CMC_321_YTP/CMC_321_YTP-ND/4515456 - Vent light rear (no led tied to this one)
+
 For the optional bargraph we are using the SparkFun SX1509 expander board and some resitor networks/bargraphs from digikey. If you want to use the bargraph you need to move the code from the test file into the main file and overwrite the stub functions. Since I won't be using it in my son's pack I removed it from the main file 
 https://learn.sparkfun.com/tutorials/sx1509-io-expander-breakout-hookup-guide
 
