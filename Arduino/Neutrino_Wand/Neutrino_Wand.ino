@@ -106,12 +106,6 @@ void setup() {
   // softwareserial at 9600 baud for the audio board
   ss.begin(9600);
 
-  // see if we have the soundboard
-  // If we fail to communicate, loop forever for now but it would be nice to warn the user somehow
-  if (!sfx.reset()) {
-    while (1);
-  }
-
   // set act modes for the fx board
   pinMode(ACT, INPUT);
 
