@@ -52,6 +52,8 @@ Adafruit_NeoPixel wandLights = Adafruit_NeoPixel(4, NEO_WAND, NEO_GRB + NEO_KHZ8
 const int powercellLedCount = 14;                                         // total number of led's in the animation
 const int powercellIndexOffset = 1;                                       // first led offset into the led chain for the animation
 
+// These are the indexes for the led's on the chain. Each jewel has 7 LEDs. If you are using a single neopixel or
+// some other neopixel configuration you will need to update these indexes to match where things are in the chain
 int c1Start = 16;
 int c1End = 22;
 int c2Start = 23;
@@ -133,12 +135,6 @@ const unsigned long firingWarnWaitTime = 10000;  // how long to hold down fire b
 void setup() {    
   // softwareserial at 9600 baud for the audio board
   ss.begin(9600);
-
-  // see if we have the soundboard
-  // If we fail to communicate, loop forever for now but it would be nice to warn the user somehow
-  if (!sfx.reset()) {
-    while (1);
-  }
 
   // set act modes for the fx board
   pinMode(ACT, INPUT);
