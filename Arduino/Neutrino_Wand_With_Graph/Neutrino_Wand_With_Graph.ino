@@ -48,7 +48,9 @@ Adafruit_NeoPixel noseJewel = Adafruit_NeoPixel(7, NEO_NOSE, NEO_GRB + NEO_KHZ80
 #define NEO_WAND 4 // for nose of wand
 Adafruit_NeoPixel wandLights = Adafruit_NeoPixel(4, NEO_WAND, NEO_GRB + NEO_KHZ800);
 
-// LED indexes into the neopixel powerstick chain for the cyclotron
+// LED indexes into the neopixel powerstick chain for the cyclotron. Each stick has 8 neopixels for a total of
+// 16 with an index starting at 0. These offsets are because my powercell window only shows 13 leds. If you can show more 
+// change the offset index and powercell count to get more or less lit.
 const int powercellLedCount = 14;                                         // total number of led's in the animation
 const int powercellIndexOffset = 1;                                       // first led offset into the led chain for the animation
 
