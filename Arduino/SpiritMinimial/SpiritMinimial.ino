@@ -1,6 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 
-#define NEO_POWER 2 // for cyclotron and powercell
+#define NEO_POWER 2 // for powercell
 Adafruit_NeoPixel powerStick = Adafruit_NeoPixel(16, NEO_POWER, NEO_GRB + NEO_KHZ800);
 
 #define NEO_CYCLO 3 // for cyclotron
