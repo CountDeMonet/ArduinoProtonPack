@@ -52,7 +52,7 @@ Adafruit_NeoPixel noseJewel = Adafruit_NeoPixel(7, NEO_NOSE, NEO_GRB + NEO_KHZ80
 Adafruit_NeoPixel wandLights = Adafruit_NeoPixel(4, NEO_WAND, NEO_GRB + NEO_KHZ800);
 
 // LED indexes into the neopixel powerstick chain for the cyclotron. Each stick has 8 neopixels for a total of
-// 16 with an index starting at 0. These offsets are because my powercell window only shows 13 leds. If you can show more 
+// 16 with an index starting at 0. These offsets are because my powercell window only shows 13 leds. If you can show more
 // change the offset index and powercell count to get more or less lit.
 const int powercellLedCount = 14;                                         // total number of led's in the animation
 const int powercellIndexOffset = 1;                                       // first led offset into the led chain for the animation
@@ -122,7 +122,7 @@ char choreTrack[] =     "T10     WAV";
 char toolsTrack[] =     "T11     WAV";
 char listenTrack[] =    "T12     WAV";
 char thatTrack[] =      "T13     WAV";
-char neutronizedTrack[]="T14     WAV";
+char neutronizedTrack[] = "T14     WAV";
 char boxTrack[] =       "T15     WAV";
 char themeTrack[] =     "T16     OGG";
 
@@ -137,14 +137,14 @@ const unsigned long firingWarmWaitTime = 5000;  // how long to hold down fire fo
 const unsigned long firingWarnWaitTime = 10000;  // how long to hold down fire before warning sounds
 
 // Arduino setup function
-void setup() {    
+void setup() {
   // softwareserial at 9600 baud for the audio board
   ss.begin(9600);
 
   // set act modes for the fx board
   pinMode(ACT, INPUT);
 
-  // Depending on your relay this may need to be updated. 
+  // Depending on your relay this may need to be updated.
   pinMode(relayPin, OUTPUT);
   // If relay defaults to on set the pin HIGH on init
   digitalWrite(relayPin, LOW);
@@ -178,7 +178,7 @@ void setup() {
   if (!io.begin(SX1509_ADDRESS)) {
     while (1) ; // If we fail to communicate, loop forever for now but it would be nice to warn the user somehow
   }
-  
+
   // configuration for the bargraph LED's
   io.pinMode(SX1509_BAR_01, OUTPUT);
   io.pinMode(SX1509_BAR_02, OUTPUT);
@@ -207,22 +207,22 @@ void playAudio( char* trackname, int playing ) {
   if (playing == 0) {
     sfx.stop();
   }
-    
+
   // now go play
   if (sfx.playTrack(trackname)) {
     sfx.unpause();
   }
 }
 
-void playDialogTrack( int playing ){
+void playDialogTrack( int playing ) {
   // if the queue is empty reseed it
-  if ( dialogQueue.isEmpty() ){
-    for (int i=1; i<=numDialog; i++){
+  if ( dialogQueue.isEmpty() ) {
+    for (int i = 1; i <= numDialog; i++) {
       dialogQueue.enqueue(i);
     }
   }
-  
-  switch (dialogQueue.dequeue()){
+
+  switch (dialogQueue.dequeue()) {
     case (1):
       playAudio(texTrack, playing);
       break;
@@ -244,7 +244,7 @@ void playDialogTrack( int playing ){
     case (7):
       playAudio(toolsTrack, playing);
       break;
-    default: 
+    default:
       playAudio(endTrack, playing);
       break;
   }
@@ -254,7 +254,7 @@ void playDialogTrack( int playing ){
 int cyclotronRunningFadeOut = 255;  // we reset this variable every time we change the cyclotron index so the fade effect works
 int cyclotronRunningFadeIn = 0;     // we reset this to 0 to fade the cyclotron in from nothing
 
-// intervals that can be adjusted in real time to speed up animations 
+// intervals that can be adjusted in real time to speed up animations
 unsigned long pwr_interval = 60;        // interval at which to cycle lights for the powercell. We update this in the loop to speed up the animation so must be declared here (milliseconds)
 unsigned long cyc_interval = 1000;      // interval at which to cycle lights for the cyclotron.
 unsigned long cyc_fade_interval = 15;   // fade the inactive cyclotron to light to nothing
@@ -270,7 +270,7 @@ void loop() {
   // get the current switch states
   int theme_switch = digitalRead(THEME_SWITCH);
 
-  // if the theme switch has recently changed from off to on we 
+  // if the theme switch has recently changed from off to on we
   // should play the full ghostbusters theme song
   if (theme_switch == 1) {
     if (theme == false) {
@@ -284,14 +284,14 @@ void loop() {
   int startup_switch = digitalRead(STARTUP_SWITCH);
   int safety_switch = digitalRead(SAFETY_SWITCH);
   int fire_button = digitalRead(FIRE_BUTTON);
-  
+
   // while the startup switch is set on
-  if (startup_switch == 1) {   
+  if (startup_switch == 1) {
     // in general we always try to play the idle sound if started
     if (playing == 1 && startup == true) {
       playAudio(idleTrack, playing);
     }
-    
+
     // choose the right powercell animation sequence for booted/on
     if ( powerBooted == true ) {
       // standard idle power sequence for the pack
@@ -300,10 +300,6 @@ void loop() {
       venting = false;
       setWandLightState(3, 0, 0); //set sloblow red
       setVentLightState(ventStart, ventEnd, 2);
-
-	  // Reset the relay to off. If relay is on set the pin HIGH
-      digitalWrite (relayPin, LOW);
-      
       powerSequenceOne(currentMillis, pwr_interval, cyc_interval, cyc_fade_interval);
     } else {
       // boot up the pack. powerSequenceBoot will set powerBooted when complete
@@ -321,19 +317,14 @@ void loop() {
         safety = true;
       }
     }
-    
-    if( startup == true && safety_switch == 1 ){
-      if( venting == false && powerBooted == true ){
+
+    if ( startup == true && safety_switch == 1 ) {
+      if ( venting == false && powerBooted == true ) {
         setWandLightState(1, 2, 0);    //  set back light orange
         setWandLightState(2, 1, 0);    //  set body led white
-      // Reset the relay to off. If relay is on set the pin HIGH
-      digitalWrite (relayPin, LOW);
-
-      }else{
+      } else {
         setWandLightState(1, 4, 0);    //  set back light off
         setWandLightState(2, 4, 0);    //  set body led off
-        // Reset the relay to off. If relay is on set the pin HIGH
-        digitalWrite (relayPin, LOW);
       }
 
       // if the safety switch is set off then we can fire when the button is pressed
@@ -343,12 +334,12 @@ void loop() {
           shutdown_leds();
           isFiring = true;
         }
-  
+
         // show the firing bargraph sequence
         barGraphSequenceTwo(currentMillis);
 
         // strobe the nose pixels
-        fireStrobe(currentMillis); 
+        fireStrobe(currentMillis);
 
         // now powercell/cyclotron/wand lights
         // if this is the first time reset some variables and play the blast track
@@ -360,7 +351,7 @@ void loop() {
         } else {
           // find out what our timing is
           unsigned long diff = (unsigned long)(millis() - firingStateMillis);
-          
+
           if ( diff > firingWarnWaitTime) { // if we are in the fire warn interval
             pwr_interval = 10;      // speed up the powercell animation
             firing_interval = 20;   // speed up the bar graph animation
@@ -387,14 +378,14 @@ void loop() {
           shutdown_leds();
           isFiring = false;
         }
-  
+
         // and do the standard bargraph sequence
         barGraphSequenceOne(currentMillis);
 
         if (fire == true) { // if we were firing let's reset the animations and play the correct final firing track
           clearFireStrobe();
           setWandLightState(0, 4, currentMillis);    // set top light off
-          
+
           pwr_interval = 60;
           firing_interval = 40;
           cyc_interval = 1000;
@@ -407,16 +398,11 @@ void loop() {
           if ( diff > firingWarnWaitTime) { // if we are past the warning let's vent the pack
             playAudio(ventTrack, playing);
             venting = true;
-            // Set relay to on. If relay is off set the pin LOW
-            digitalWrite (relayPin, HIGH);
-           
             clearPowerStrip(); // play the boot animation on the powercell
           } else if ( diff > firingWarmWaitTime) { // if in the dialog time play the dialog in sequence
-            if( useDialogTracks == true ){
+            if ( useDialogTracks == true ) {
               playDialogTrack(playing);
-              // Set relay to off. If relay is on set the pin HIGH
-              digitalWrite (relayPin, LOW);
-            }else{
+            } else {
               playAudio(endTrack, playing);
             }
           } else {
@@ -440,14 +426,14 @@ void loop() {
       }
     }
   } else { // if we are powering down
-    if( poweredDown == false ){
-      if( shuttingDown == false ){
+    if ( poweredDown == false ) {
+      if ( shuttingDown == false ) {
         playAudio(shutdownTrack, playing); // play the pack shutdown track
         shuttingDown = true;
       }
       cyclotronRunningFadeOut = 255;
       powerSequenceShutdown(currentMillis);
-    }else{
+    } else {
       if (startup == true) { // if started reset the variables
         clearPowerStrip(); // clear all led's
         shutdown_leds();
@@ -466,7 +452,7 @@ bool flashState = false;
 const unsigned long wandFastFlashInterval = 100; // interval at which we flash the top led on the wand
 const unsigned long wandMediumFlashInterval = 500; // interval at which we flash the top led on the wand
 
-void setWandLightState(int lednum, int state, unsigned long currentMillis){
+void setWandLightState(int lednum, int state, unsigned long currentMillis) {
   switch ( state ) {
     case 0: // set led red
       wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));
@@ -483,53 +469,53 @@ void setWandLightState(int lednum, int state, unsigned long currentMillis){
     case 4: // set led off
       wandLights.setPixelColor(lednum, 0);
       break;
-    case 5: // fast white flashing    
-      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandFastFlashInterval) {    
-        prevFlashMillis = currentMillis;    
-        if( flashState == false ){    
-          wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));    
-          flashState = true;    
-        }else{    
-          wandLights.setPixelColor(lednum, 0);    
-          flashState = false;   
-        }   
-      }   
+    case 5: // fast white flashing
+      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandFastFlashInterval) {
+        prevFlashMillis = currentMillis;
+        if ( flashState == false ) {
+          wandLights.setPixelColor(lednum, wandLights.Color(255, 255, 255));
+          flashState = true;
+        } else {
+          wandLights.setPixelColor(lednum, 0);
+          flashState = false;
+        }
+      }
       break;
-    case 6: // slower orange flashing    
-      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandMediumFlashInterval) {    
-        prevFlashMillis = currentMillis;    
-        if( flashState == false ){    
-          wandLights.setPixelColor(lednum, wandLights.Color(255, 127, 0));    
-          flashState = true;    
-        }else{    
-          wandLights.setPixelColor(lednum, 0);    
-          flashState = false;   
-        }   
-      }   
+    case 6: // slower orange flashing
+      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandMediumFlashInterval) {
+        prevFlashMillis = currentMillis;
+        if ( flashState == false ) {
+          wandLights.setPixelColor(lednum, wandLights.Color(255, 127, 0));
+          flashState = true;
+        } else {
+          wandLights.setPixelColor(lednum, 0);
+          flashState = false;
+        }
+      }
       break;
-    case 7: // medium red flashing    
-      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandMediumFlashInterval) {    
-        prevFlashMillis = currentMillis;    
-        if( flashState == false ){    
-          wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));    
-          flashState = true;    
-        }else{    
-          wandLights.setPixelColor(lednum, 0);    
-          flashState = false;   
-        }   
-      }   
+    case 7: // medium red flashing
+      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandMediumFlashInterval) {
+        prevFlashMillis = currentMillis;
+        if ( flashState == false ) {
+          wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));
+          flashState = true;
+        } else {
+          wandLights.setPixelColor(lednum, 0);
+          flashState = false;
+        }
+      }
       break;
-    case 8: // fast red flashing    
-      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandFastFlashInterval) {    
-        prevFlashMillis = currentMillis;    
-        if( flashState == false ){    
-          wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));    
-          flashState = true;    
-        }else{    
-          wandLights.setPixelColor(lednum, 0);    
-          flashState = false;   
-        }   
-      }   
+    case 8: // fast red flashing
+      if ((unsigned long)(currentMillis - prevFlashMillis) >= wandFastFlashInterval) {
+        prevFlashMillis = currentMillis;
+        if ( flashState == false ) {
+          wandLights.setPixelColor(lednum, wandLights.Color(255, 0, 0));
+          flashState = true;
+        } else {
+          wandLights.setPixelColor(lednum, 0);
+          flashState = false;
+        }
+      }
       break;
   }
 
@@ -537,22 +523,28 @@ void setWandLightState(int lednum, int state, unsigned long currentMillis){
 }
 
 /*************** Vent Light *************************/
-void setVentLightState(int startLed, int endLed, int state ){
+void setVentLightState(int startLed, int endLed, int state ) {
   switch ( state ) {
     case 0: // set all leds to white
-      for(int i=startLed; i <= endLed; i++) {
+      for (int i = startLed; i <= endLed; i++) {
         powerStick.setPixelColor(i, powerStick.Color(255, 255, 255));
       }
+      // Set the relay to on while venting. If relay is off set the pin LOW
+      digitalWrite (relayPin, HIGH);
       break;
     case 1: // set all leds to blue
-      for(int i=startLed; i <= endLed; i++) {
+      for (int i = startLed; i <= endLed; i++) {
         powerStick.setPixelColor(i, powerStick.Color(0, 0, 255));
       }
+      // Set the relay to on while venting. If relay is off set the pin LOW
+      digitalWrite (relayPin, HIGH);
       break;
     case 2: // set all leds off
-      for(int i=startLed; i <= endLed; i++) {
+      for (int i = startLed; i <= endLed; i++) {
         powerStick.setPixelColor(i, 0);
       }
+      // Set the relay to OFF while not venting. If relay is onf set the pin HIGH
+      digitalWrite (relayPin, LOW);
       break;
   }
 }
@@ -560,7 +552,7 @@ void setVentLightState(int startLed, int endLed, int state ){
 /*************** Powercell/Cyclotron Animations *********************/
 // timer helpers and intervals for the animations
 unsigned long prevPwrBootMillis = 0;    // the last time we changed a powercell light in the boot sequence
-const unsigned long pwr_boot_interval = 60;       // interval at which to cycle lights (milliseconds). Adjust this if 
+const unsigned long pwr_boot_interval = 60;       // interval at which to cycle lights (milliseconds). Adjust this if
 
 unsigned long prevCycBootMillis = 0;    // the last time we changed a cyclotron light in the boot sequence
 const unsigned long cyc_boot_interval = 500;      // interval at which to cycle lights (milliseconds).
@@ -582,39 +574,39 @@ int powerShutdownSeqNum = powercellLedCount - powercellIndexOffset;       // shu
 int currentBootLevel = powercellIndexOffset;                              // current powercell boot level sequence led
 int currentLightLevel = powercellLedCount - powercellIndexOffset;         // current powercell boot light sequence led
 
-void setCyclotronLightState(int startLed, int endLed, int state ){
+void setCyclotronLightState(int startLed, int endLed, int state ) {
   switch ( state ) {
     case 0: // set all leds to red
-      for(int i=startLed; i <= endLed; i++) {
+      for (int i = startLed; i <= endLed; i++) {
         powerStick.setPixelColor(i, powerStick.Color(255, 0, 0));
       }
       break;
     case 1: // set all leds to orange
-      for(int i=startLed; i <= endLed; i++) {
+      for (int i = startLed; i <= endLed; i++) {
         powerStick.setPixelColor(i, powerStick.Color(255, 106, 0));
       }
       break;
     case 2: // set all leds off
-      for(int i=startLed; i <= endLed; i++) {
+      for (int i = startLed; i <= endLed; i++) {
         powerStick.setPixelColor(i, 0);
       }
       break;
     case 3: // fade all leds from red
-      for(int i=startLed; i <= endLed; i++) {
-        if( cyclotronRunningFadeOut >= 0 ){
-          powerStick.setPixelColor(i, 255 * cyclotronRunningFadeOut/255, 0, 0);
+      for (int i = startLed; i <= endLed; i++) {
+        if ( cyclotronRunningFadeOut >= 0 ) {
+          powerStick.setPixelColor(i, 255 * cyclotronRunningFadeOut / 255, 0, 0);
           cyclotronRunningFadeOut--;
-        }else{
+        } else {
           powerStick.setPixelColor(i, 0);
         }
       }
       break;
     case 4: // fade all leds to red
-      for(int i=startLed; i <= endLed; i++) {
-        if( cyclotronRunningFadeIn < 255 ){
-          powerStick.setPixelColor(i, 255 * cyclotronRunningFadeIn/255, 0, 0);
+      for (int i = startLed; i <= endLed; i++) {
+        if ( cyclotronRunningFadeIn < 255 ) {
+          powerStick.setPixelColor(i, 255 * cyclotronRunningFadeIn / 255, 0, 0);
           cyclotronRunningFadeIn++;
-        }else{
+        } else {
           powerStick.setPixelColor(i, powerStick.Color(255, 0, 0));
         }
       }
@@ -632,22 +624,20 @@ void clearPowerStrip() {
   currentLightLevel = powercellLedCount;
   currentBootLevel = powercellIndexOffset;
   cyclotronRunningFadeIn = 0;
-  
+
   // shutoff the leds
   for ( int i = 0; i <= c4End; i++) {
     powerStick.setPixelColor(i, 0);
   }
   powerStick.show();
 
-  for ( int j=0; j<=3; j++ ){
+  for ( int j = 0; j <= 3; j++ ) {
     wandLights.setPixelColor(j, 0);
   }
   wandLights.show();
 
-  if( venting == true ){
+  if ( venting == true ) {
     setVentLightState(ventStart, ventEnd, 0);
-	// Set the relay to on while venting. If relay is off set the pin LOW
-    digitalWrite (relayPin, HIGH);
   }
 }
 
@@ -657,29 +647,29 @@ void powerSequenceBoot(unsigned long currentMillis) {
   bool doUpdate = false;
 
   // START CYCLOTRON
-  if( useCyclotronFadeInEffect == false ){
+  if ( useCyclotronFadeInEffect == false ) {
     if ((unsigned long)(currentMillis - prevCycBootMillis) >= cyc_boot_interval) {
       prevCycBootMillis = currentMillis;
 
-      if( reverseBootCyclotron == false ){
+      if ( reverseBootCyclotron == false ) {
         setCyclotronLightState(c1Start, c1End, 1);
         setCyclotronLightState(c2Start, c2End, 2);
         setCyclotronLightState(c3Start, c3End, 1);
         setCyclotronLightState(c4Start, c4End, 2);
-        
+
         doUpdate = true;
         reverseBootCyclotron = true;
-      }else{
+      } else {
         setCyclotronLightState(c1Start, c1End, 2);
         setCyclotronLightState(c2Start, c2End, 1);
         setCyclotronLightState(c3Start, c3End, 2);
         setCyclotronLightState(c4Start, c4End, 1);
-        
+
         doUpdate = true;
         reverseBootCyclotron = false;
       }
     }
-  }else{
+  } else {
     if ((unsigned long)(currentMillis - prevCycBootMillis) >= cyc_boot_alt_interval) {
       prevCycBootMillis = currentMillis;
       setCyclotronLightState(c1Start, c4End, 4);
@@ -687,29 +677,29 @@ void powerSequenceBoot(unsigned long currentMillis) {
     }
   }
   // END CYCLOTRON
-  
+
   if ((unsigned long)(currentMillis - prevPwrBootMillis) >= pwr_boot_interval) {
     // save the last time you blinked the LED
     prevPwrBootMillis = currentMillis;
 
     // START POWERCELL
-    if( currentBootLevel != powerSeqTotal ){
-      if( currentBootLevel == currentLightLevel){
-        if(currentLightLevel+1 <= powerSeqTotal){
-          powerStick.setPixelColor(currentLightLevel+1, 0);
+    if ( currentBootLevel != powerSeqTotal ) {
+      if ( currentBootLevel == currentLightLevel) {
+        if (currentLightLevel + 1 <= powerSeqTotal) {
+          powerStick.setPixelColor(currentLightLevel + 1, 0);
         }
         powerStick.setPixelColor(currentBootLevel, powerStick.Color(0, 0, 255));
         currentLightLevel = powerSeqTotal;
         currentBootLevel++;
-      }else{
-        if(currentLightLevel+1 <= powerSeqTotal){
-          powerStick.setPixelColor(currentLightLevel+1, 0);
+      } else {
+        if (currentLightLevel + 1 <= powerSeqTotal) {
+          powerStick.setPixelColor(currentLightLevel + 1, 0);
         }
         powerStick.setPixelColor(currentLightLevel, powerStick.Color(0, 0, 255));
         currentLightLevel--;
       }
       doUpdate = true;
-    }else{
+    } else {
       powerBooted = true;
       currentBootLevel = powercellIndexOffset;
       currentLightLevel = powercellLedCount - powercellIndexOffset;
@@ -718,7 +708,7 @@ void powerSequenceBoot(unsigned long currentMillis) {
   }
 
   // if we have changed an led
-  if( doUpdate == true ){
+  if ( doUpdate == true ) {
     powerStick.show(); // commit all of the changes
   }
 }
@@ -729,11 +719,11 @@ int cycFading = -1;   // which cyclotron led is fading out for game style
 void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsigned long cycspeed, unsigned long cycfadespeed) {
   bool doUpdate = false;  // keep track of if we changed something so we only update on changes
 
-  // START CYCLOTRON 
-  if( useGameCyclotronEffect == true ){ // if we are doing the video game style cyclotron
+  // START CYCLOTRON
+  if ( useGameCyclotronEffect == true ) { // if we are doing the video game style cyclotron
     if ((unsigned long)(currentMillis - prevCycMillis) >= cycspeed) {
       prevCycMillis = currentMillis;
-      
+
       switch ( cycOrder ) {
         case 0:
           setCyclotronLightState(c1Start, c1End, 0);
@@ -768,14 +758,14 @@ void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsig
           cycOrder = 0;
           break;
       }
-  
+
       doUpdate = true;
     }
-  
+
     // now figure out the fading light
-    if( (unsigned long)( currentMillis - prevFadeCycMillis) >= cycfadespeed ){
+    if ( (unsigned long)( currentMillis - prevFadeCycMillis) >= cycfadespeed ) {
       prevFadeCycMillis = currentMillis;
-      if( cycFading != -1 ){
+      if ( cycFading != -1 ) {
         switch ( cycFading ) {
           case 0:
             setCyclotronLightState(c4Start, c4End, 3);
@@ -793,10 +783,10 @@ void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsig
         doUpdate = true;
       }
     }
-  }else{ // otherwise this is the standard version
+  } else { // otherwise this is the standard version
     if ((unsigned long)(currentMillis - prevCycMillis) >= cycspeed) {
       prevCycMillis = currentMillis;
-      
+
       switch ( cycOrder ) {
         case 0:
           setCyclotronLightState(c4Start, c4End, 2);
@@ -835,7 +825,7 @@ void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsig
           cycOrder = 0;
           break;
       }
-  
+
       doUpdate = true;
     }
   }
@@ -853,7 +843,7 @@ void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsig
         powerStick.setPixelColor(i, 0);
       }
     }
-    
+
     if ( powerSeqNum <= powerSeqTotal) {
       powerSeqNum++;
     } else {
@@ -865,7 +855,7 @@ void powerSequenceOne(unsigned long currentMillis, unsigned long anispeed, unsig
   // END POWERCELL
 
   // if we changed anything update
-  if( doUpdate == true ){
+  if ( doUpdate == true ) {
     powerStick.show();
   }
 }
@@ -877,16 +867,16 @@ void powerSequenceShutdown(unsigned long currentMillis) {
     prevShtdMillis = currentMillis;
 
     // START CYCLOTRON
-    for(int i=c1Start; i <= c4End; i++) {
-      if( cyclotronFadeOut >= 0 ){
-        powerStick.setPixelColor(i, 255 * cyclotronFadeOut/255, 0, 0);
+    for (int i = c1Start; i <= c4End; i++) {
+      if ( cyclotronFadeOut >= 0 ) {
+        powerStick.setPixelColor(i, 255 * cyclotronFadeOut / 255, 0, 0);
         cyclotronFadeOut--;
-      }else{
+      } else {
         powerStick.setPixelColor(i, 0);
       }
     }
     // END CYCLOTRON
-    
+
     // START POWERCELL
     for ( int i = powerSeqTotal; i >= powercellIndexOffset; i--) {
       if ( i <= powerShutdownSeqNum ) {
@@ -895,9 +885,9 @@ void powerSequenceShutdown(unsigned long currentMillis) {
         powerStick.setPixelColor(i, 0);
       }
     }
-    
+
     powerStick.show();
-    
+
     if ( powerShutdownSeqNum >= powercellIndexOffset) {
       powerShutdownSeqNum--;
     } else {
@@ -926,7 +916,7 @@ void clearFireStrobe() {
 void fireStrobe(unsigned long currentMillis) {
   if ((unsigned long)(currentMillis - prevFireMillis) >= fire_interval) {
     prevFireMillis = currentMillis;
-    
+
     switch ( fireSeqNum ) {
       case 0:
         noseJewel.setPixelColor(0, noseJewel.Color(255, 255, 255));
@@ -983,9 +973,9 @@ void fireStrobe(unsigned long currentMillis) {
         noseJewel.setPixelColor(6, noseJewel.Color(0, 0, 255));
         break;
     }
-  
+
     noseJewel.show();
-  
+
     fireSeqNum++;
     if ( fireSeqNum > fireSeqTotal ) {
       fireSeqNum = 0;
